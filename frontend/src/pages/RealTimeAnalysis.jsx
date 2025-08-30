@@ -58,25 +58,25 @@ const RealTimeAnalysis = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8">
       {/* Header */}
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3 sm:mb-4">
           Real-Time Analysis
         </h1>
-        <p className="text-lg text-gray-600">
+        <p className="text-base sm:text-lg text-gray-600 px-4">
           Analyze individual transactions for fraud detection in real-time
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
         {/* Input Form */}
         <div className="card">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Transaction Details</h2>
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Transaction Details</h2>
           
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             {/* Basic Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="Transaction_ID" className="block text-sm font-medium text-gray-700 mb-2">
                   Transaction ID *
@@ -127,7 +127,7 @@ const RealTimeAnalysis = () => {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="Transaction_Type" className="block text-sm font-medium text-gray-700 mb-2">
                   Transaction Type
@@ -178,7 +178,7 @@ const RealTimeAnalysis = () => {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="Time_of_Day" className="block text-sm font-medium text-gray-700 mb-2">
                   Time of Day
@@ -216,7 +216,7 @@ const RealTimeAnalysis = () => {
             </div>
 
             {/* Behavioral Features */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label htmlFor="Transaction_Frequency" className="block text-sm font-medium text-gray-700 mb-2">
                   Transaction Frequency
@@ -248,7 +248,7 @@ const RealTimeAnalysis = () => {
                   placeholder="Average amount"
                 />
               </div>
-              <div>
+              <div className="sm:col-span-2 lg:col-span-1">
                 <label htmlFor="Account_Age" className="block text-sm font-medium text-gray-700 mb-2">
                   Account Age (days)
                 </label>
@@ -284,10 +284,10 @@ const RealTimeAnalysis = () => {
 
             {/* Error Display */}
             {error && (
-              <div className="p-4 bg-danger-50 border border-danger-200 rounded-lg">
+              <div className="p-3 sm:p-4 bg-danger-50 border border-danger-200 rounded-lg">
                 <div className="flex items-center space-x-3">
-                  <AlertTriangle className="h-5 w-5 text-danger-600" />
-                  <p className="text-danger-800">{error}</p>
+                  <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-danger-600 flex-shrink-0" />
+                  <p className="text-danger-800 text-sm sm:text-base">{error}</p>
                 </div>
               </div>
             )}
@@ -304,13 +304,13 @@ const RealTimeAnalysis = () => {
             >
               {loading ? (
                 <div className="flex items-center justify-center space-x-2">
-                  <Loader className="h-5 w-5 animate-spin" />
-                  <span>Analyzing...</span>
+                  <Loader className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                  <span className="text-sm sm:text-base">Analyzing...</span>
                 </div>
               ) : (
                 <div className="flex items-center justify-center space-x-2">
-                  <Zap className="h-5 w-5" />
-                  <span>Analyze Transaction</span>
+                  <Zap className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span className="text-sm sm:text-base">Analyze Transaction</span>
                 </div>
               )}
             </button>
@@ -318,75 +318,75 @@ const RealTimeAnalysis = () => {
         </div>
 
         {/* Results Display */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {realTimeResults ? (
             <div className="card">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">Analysis Results</h2>
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Analysis Results</h2>
               
               {/* Risk Assessment */}
-              <div className="mb-6">
-                <div className={`p-4 rounded-lg ${getRiskLevel(realTimeResults.fraud_probability).bgColor}`}>
+              <div className="mb-4 sm:mb-6">
+                <div className={`p-3 sm:p-4 rounded-lg ${getRiskLevel(realTimeResults.fraud_probability).bgColor}`}>
                   <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-gray-900">Risk Assessment</h3>
-                      <p className={`text-lg font-bold ${getRiskLevel(realTimeResults.fraud_probability).color}`}>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Risk Assessment</h3>
+                      <p className={`text-base sm:text-lg font-bold ${getRiskLevel(realTimeResults.fraud_probability).color}`}>
                         {getRiskLevel(realTimeResults.fraud_probability).level}
                       </p>
                     </div>
-                    <Shield className={`h-8 w-8 ${getRiskLevel(realTimeResults.fraud_probability).color}`} />
+                    <Shield className={`h-6 w-6 sm:h-8 sm:w-8 ${getRiskLevel(realTimeResults.fraud_probability).color} flex-shrink-0`} />
                   </div>
                 </div>
               </div>
 
               {/* Fraud Probability */}
-              <div className="mb-6">
-                <h3 className="font-semibold text-gray-900 mb-3">Fraud Probability</h3>
-                <div className="bg-gray-200 rounded-full h-4 mb-2">
+              <div className="mb-4 sm:mb-6">
+                <h3 className="font-semibold text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">Fraud Probability</h3>
+                <div className="bg-gray-200 rounded-full h-3 sm:h-4 mb-2">
                   <div 
-                    className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-4 rounded-full transition-all duration-500"
+                    className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-3 sm:h-4 rounded-full transition-all duration-500"
                     style={{ width: `${realTimeResults.fraud_probability * 100}%` }}
                   ></div>
                 </div>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-xl sm:text-2xl font-bold text-gray-900">
                   {(realTimeResults.fraud_probability * 100).toFixed(2)}%
                 </p>
               </div>
 
               {/* Confidence Score */}
-              <div className="mb-6">
-                <h3 className="font-semibold text-gray-900 mb-2">Model Confidence</h3>
-                <p className="text-lg font-bold text-primary-600">
+              <div className="mb-4 sm:mb-6">
+                <h3 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">Model Confidence</h3>
+                <p className="text-lg sm:text-xl font-bold text-primary-600">
                   {(realTimeResults.confidence * 100).toFixed(2)}%
                 </p>
               </div>
 
               {/* Recommendation */}
-              <div className="mb-6">
-                <h3 className="font-semibold text-gray-900 mb-2">Recommendation</h3>
-                <p className="text-gray-700 bg-gray-50 p-3 rounded-lg">
+              <div className="mb-4 sm:mb-6">
+                <h3 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">Recommendation</h3>
+                <p className="text-gray-700 bg-gray-50 p-3 rounded-lg text-sm sm:text-base">
                   {getRecommendation(realTimeResults.fraud_probability)}
                 </p>
               </div>
 
               {/* Detailed Scores */}
               <div className="space-y-3">
-                <h3 className="font-semibold text-gray-900">Detailed Analysis</h3>
+                <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Detailed Analysis</h3>
                 <div className="grid grid-cols-1 gap-3">
                   <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                    <span className="text-gray-700">Supervised Score</span>
-                    <span className="font-semibold text-gray-900">
+                    <span className="text-gray-700 text-sm sm:text-base">Supervised Score</span>
+                    <span className="font-semibold text-gray-900 text-sm sm:text-base">
                       {(realTimeResults.supervised_score * 100).toFixed(2)}%
                     </span>
                   </div>
                   <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                    <span className="text-gray-700">Anomaly Score</span>
-                    <span className="font-semibold text-gray-900">
+                    <span className="text-gray-700 text-sm sm:text-base">Anomaly Score</span>
+                    <span className="font-semibold text-gray-900 text-sm sm:text-base">
                       {(realTimeResults.anomaly_score * 100).toFixed(2)}%
                     </span>
                   </div>
                   <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                    <span className="text-gray-700">Combined Score</span>
-                    <span className="font-semibold text-gray-900">
+                    <span className="text-gray-700 text-sm sm:text-base">Combined Score</span>
+                    <span className="font-semibold text-gray-900 text-sm sm:text-base">
                       {(realTimeResults.combined_score * 100).toFixed(2)}%
                     </span>
                   </div>
@@ -395,12 +395,12 @@ const RealTimeAnalysis = () => {
             </div>
           ) : (
             <div className="card">
-              <div className="text-center py-12">
-                <Shield className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <div className="text-center py-8 sm:py-12">
+                <Shield className="h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
                   Ready for Analysis
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-gray-600 text-sm sm:text-base px-4">
                   Fill in the transaction details and click "Analyze Transaction" to get started.
                 </p>
               </div>

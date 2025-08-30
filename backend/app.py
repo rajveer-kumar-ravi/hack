@@ -20,7 +20,7 @@ app = Flask(__name__)
 # Allow large CSV uploads. Default 2048MB (2GB). Override with env MAX_CONTENT_MB.
 MAX_CONTENT_MB = int(os.environ.get('MAX_CONTENT_MB', '2048'))
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_MB * 1024 * 1024
-CORS(app)
+CORS(app, origins=['http://localhost:3000', 'http://localhost:3001'], supports_credentials=True)
 
 # Global variables to store models and results
 models = {
@@ -35,8 +35,8 @@ models = {
 # Configuration
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'csv'}
-TARGET_COL = 'Fraudulent'
-ID_COLS = ['Transaction_ID', 'User_ID']
+TARGET_COL = 'isFraud'  # Updated to match the dataset
+ID_COLS = ['nameOrig', 'nameDest']  # Updated to match the dataset
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
@@ -151,9 +151,9 @@ def batch_analysis():
         for idx in flagged_indices:
             tx_data = df.iloc[idx]
             flagged_transactions.append({
-                'Transaction_ID': str(tx_data.get('Transaction_ID', f'TX_{idx}')),
-                'User_ID': str(tx_data.get('User_ID', f'USER_{idx}')),
-                'Transaction_Amount': float(tx_data.get('Transaction_Amount', 0)),
+                'Transaction_ID': str(tx_data.get('nameOrig', f'TX_{idx}')),
+                'User_ID': str(tx_data.get('nameDest', f'USER_{idx}')),
+                'Transaction_Amount': float(tx_data.get('amount', 0)),
                 'suspicion_score': float(combined_score[idx])
             })
         

@@ -107,32 +107,32 @@ const Dashboard = () => {
   const StatusIcon = statusInfo.icon;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* Header */}
       <div className="text-center">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">
           Fraud Detection Dashboard
         </h1>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+        <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto px-4">
           Advanced machine learning system for detecting fraudulent transactions using supervised and unsupervised learning techniques.
         </p>
       </div>
 
       {/* Model Status */}
       <div className="card">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
           <div className="flex items-center space-x-3">
             <div className={`p-2 rounded-lg ${statusInfo.bgColor}`}>
-              <StatusIcon className={`h-6 w-6 ${statusInfo.color}`} />
+              <StatusIcon className={`h-5 w-5 sm:h-6 sm:w-6 ${statusInfo.color}`} />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Model Status</h3>
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Model Status</h3>
               <p className={`text-sm font-medium ${statusInfo.color}`}>
                 {statusInfo.text}
               </p>
             </div>
           </div>
-          <div className="text-right">
+          <div className="text-left sm:text-right">
             <p className="text-sm text-gray-500">Last Updated</p>
             <p className="text-sm font-medium text-gray-900">
               {new Date().toLocaleTimeString()}
@@ -142,18 +142,18 @@ const Dashboard = () => {
       </div>
 
       {/* Statistics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {stats.map((stat, index) => {
           const Icon = stat.icon;
           return (
             <div key={index} className="card">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">{stat.title}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{stat.value}</p>
                 </div>
-                <div className={`p-3 rounded-lg ${stat.bgColor}`}>
-                  <Icon className={`h-6 w-6 ${stat.color}`} />
+                <div className={`p-2 sm:p-3 rounded-lg flex-shrink-0 ${stat.bgColor}`}>
+                  <Icon className={`h-5 w-5 sm:h-6 sm:w-6 ${stat.color}`} />
                 </div>
               </div>
             </div>
@@ -163,25 +163,25 @@ const Dashboard = () => {
 
       {/* Quick Actions */}
       <div className="card">
-        <h2 className="text-xl font-semibold text-gray-900 mb-6">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Quick Actions</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {quickActions.map((action, index) => {
             const Icon = action.icon;
             return (
               <Link
                 key={index}
                 to={action.path}
-                className="group block p-6 border border-gray-200 rounded-xl hover:border-primary-300 hover:shadow-lg transition-all duration-200"
+                className="group block p-4 sm:p-6 border border-gray-200 rounded-xl hover:border-primary-300 hover:shadow-lg transition-all duration-200"
               >
-                <div className="flex items-center space-x-4">
-                  <div className={`p-3 rounded-lg ${action.color} text-white transition-colors duration-200`}>
-                    <Icon className="h-6 w-6" />
+                <div className="flex items-center space-x-3 sm:space-x-4">
+                  <div className={`p-2 sm:p-3 rounded-lg ${action.color} text-white transition-colors duration-200 flex-shrink-0`}>
+                    <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 group-hover:text-primary-600 transition-colors duration-200">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 group-hover:text-primary-600 transition-colors duration-200 truncate">
                       {action.title}
                     </h3>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="text-xs sm:text-sm text-gray-600 mt-1 line-clamp-2">
                       {action.description}
                     </p>
                   </div>
@@ -195,25 +195,25 @@ const Dashboard = () => {
       {/* Recent Activity */}
       {(batchResults || realTimeResults) && (
         <div className="card">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Recent Activity</h2>
-          <div className="space-y-4">
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Recent Activity</h2>
+          <div className="space-y-3 sm:space-y-4">
             {batchResults && (
-              <div className="flex items-center space-x-3 p-4 bg-blue-50 rounded-lg">
-                <BarChart3 className="h-5 w-5 text-blue-600" />
-                <div>
-                  <p className="font-medium text-gray-900">Batch Analysis Completed</p>
-                  <p className="text-sm text-gray-600">
+              <div className="flex items-center space-x-3 p-3 sm:p-4 bg-blue-50 rounded-lg">
+                <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-gray-900 text-sm sm:text-base">Batch Analysis Completed</p>
+                  <p className="text-xs sm:text-sm text-gray-600 truncate">
                     {batchResults.statistics?.totalTransactions || 0} transactions analyzed
                   </p>
                 </div>
               </div>
             )}
             {realTimeResults && (
-              <div className="flex items-center space-x-3 p-4 bg-green-50 rounded-lg">
-                <Zap className="h-5 w-5 text-green-600" />
-                <div>
-                  <p className="font-medium text-gray-900">Real-Time Analysis</p>
-                  <p className="text-sm text-gray-600">
+              <div className="flex items-center space-x-3 p-3 sm:p-4 bg-green-50 rounded-lg">
+                <Zap className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-gray-900 text-sm sm:text-base">Real-Time Analysis</p>
+                  <p className="text-xs sm:text-sm text-gray-600 truncate">
                     Transaction analyzed with {realTimeResults.confidence || 0}% confidence
                   </p>
                 </div>

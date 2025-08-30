@@ -69,7 +69,7 @@ export const FraudDetectionProvider = ({ children }) => {
   const [state, dispatch] = useReducer(fraudDetectionReducer, initialState);
 
   const api = axios.create({
-    baseURL: 'http://localhost:5000',
+    baseURL: process.env.REACT_APP_API_URL || '',
     timeout: 300000, // 5 minutes for batch processing
   });
 
@@ -78,6 +78,7 @@ export const FraudDetectionProvider = ({ children }) => {
     dispatch({ type: 'SET_ERROR', payload: null });
     
     try {
+      console.log('Starting batch analysis for file:', file.name);
       const formData = new FormData();
       formData.append('file', file);
       if (sampleSize) {
@@ -90,9 +91,15 @@ export const FraudDetectionProvider = ({ children }) => {
         },
       });
 
+      console.log('Batch analysis completed:', response.data);
       dispatch({ type: 'SET_BATCH_RESULTS', payload: response.data });
+      
+      // Update model status after successful analysis
+      await getModelStatus();
+      
       return response.data;
     } catch (error) {
+      console.error('Batch analysis failed:', error);
       const errorMessage = error.response?.data?.error || error.message || 'An error occurred during batch analysis';
       dispatch({ type: 'SET_ERROR', payload: errorMessage });
       throw error;
@@ -116,11 +123,14 @@ export const FraudDetectionProvider = ({ children }) => {
 
   const getModelStatus = async () => {
     try {
+      console.log('Fetching model status from:', api.defaults.baseURL);
       const response = await api.get('/api/model-status');
+      console.log('Model status response:', response.data);
       dispatch({ type: 'SET_MODEL_STATUS', payload: response.data.status });
       return response.data;
     } catch (error) {
       console.error('Error fetching model status:', error);
+      console.error('Error details:', error.response?.data);
     }
   };
 
@@ -130,6 +140,13 @@ export const FraudDetectionProvider = ({ children }) => {
 
   useEffect(() => {
     getModelStatus();
+    
+    // Set up periodic status check
+    const interval = setInterval(() => {
+      getModelStatus();
+    }, 30000); // Check every 30 seconds
+    
+    return () => clearInterval(interval);
   }, []);
 
   const value = {

@@ -185,7 +185,7 @@ def run_chained_pipeline(path, target_col, sample_n=None, id_cols = ["Transactio
 
     combined = best['combined']
     flagged_idx = np.where(final_pred == 1)[0]
-    flagged_df = df.iloc[flagged_idx][[*id_cols, 'Transaction_Amount', target_col]].assign(suspicion_score=combined[flagged_idx])
+    flagged_df = df.iloc[flagged_idx][[*id_cols, 'amount', target_col]].assign(suspicion_score=combined[flagged_idx])
     print("\nNumber of transactions flagged (final):", len(flagged_df))
     flagged_df.to_csv("flagged_transactions.csv",  index=False)  # <<-- saves all flagged transactions
     print("All flagged transactions saved to 'flagged_transactions.csv'")
