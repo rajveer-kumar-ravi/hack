@@ -239,14 +239,13 @@ const BatchAnalysis = () => {
             </div>
           </div>
 
-          {batchResults.flaggedTransactions && batchResults.flaggedTransactions.length > 0 && (
+          {/* {batchResults.flaggedTransactions && batchResults.flaggedTransactions.length > 0 && (
             <div className="mt-4 sm:mt-6">
               <h3 className="font-semibold text-gray-900 mb-3 sm:mb-4 text-sm sm:text-base">
                 Flagged Transactions ({batchResults.totalFlagged || batchResults.flaggedTransactions.length})
               </h3>
               <div className="overflow-x-auto">
                 <div className="min-w-full">
-                  {/* Mobile Card View */}
                   <div className="sm:hidden space-y-3">
                     {batchResults.flaggedTransactions.slice(0, 10).map((tx, index) => (
                       <div key={index} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
@@ -273,7 +272,7 @@ const BatchAnalysis = () => {
                     ))}
                   </div>
 
-                  {/* Desktop Table View */}
+                  
                   <table className="hidden sm:table min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
@@ -322,7 +321,7 @@ const BatchAnalysis = () => {
                 </p>
               )}
             </div>
-          )}
+          )} */}
         </div>
       )}
     </div>

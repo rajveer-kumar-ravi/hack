@@ -117,7 +117,6 @@ const Results = () => {
                    transaction.V27 ||
                    transaction.V28 ||
                    0;
-    
     // If amount is 0 or falsy, return a placeholder
     if (!amount || amount === 0) {
       return '0.00';
@@ -127,22 +126,24 @@ const Results = () => {
     return typeof amount === 'number' ? amount.toFixed(2) : amount;
   };
 
-  if (!batchResults && !realTimeResults) {
-    return (
-      <div className="max-w-4xl mx-auto text-center py-8 sm:py-12">
-        <div className="card">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3 sm:mb-4">No Results Available</h1>
-          <p className="text-base sm:text-lg text-gray-600 mb-6 sm:mb-8 px-4">
-            Run a batch analysis or real-time analysis to see results here.
-          </p>
-          <div className="flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4">
-            <button className="btn-primary">Run Batch Analysis</button>
-            <button className="btn-secondary">Real-Time Analysis</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  
+
+  // if (!batchResults && !realTimeResults) {
+  //   return (
+  //     <div className="max-w-4xl mx-auto text-center py-8 sm:py-12">
+  //       <div className="card">
+  //         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3 sm:mb-4">No Results Available</h1>
+  //         <p className="text-base sm:text-lg text-gray-600 mb-6 sm:mb-8 px-4">
+  //           Run a batch analysis or real-time analysis to see results here.
+  //         </p>
+  //         <div className="flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4">
+  //           <button className="btn-primary">Run Batch Analysis</button>
+  //           <button className="btn-secondary">Real-Time Analysis</button>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
@@ -372,253 +373,6 @@ const Results = () => {
         </div>
       )}
 
-             {/* Flagged Transactions Table */}
-       {batchResults?.flaggedTransactions && (
-         <div className="card">
-           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 space-y-2 sm:space-y-0">
-             <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Flagged Transactions</h2>
-                                                                                <div className="flex items-center space-x-2">
-                 <Filter className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
-                 <span className="text-xs sm:text-sm text-gray-600">
-                   {batchResults.totalFlagged || batchResults.flaggedTransactions.length} transactions
-                 </span>
-               </div>
-           </div>
-
-           
-          
-                     <div className="overflow-x-auto">
-             <div className="min-w-full">
-               {/* Mobile Card View */}
-                              <div className="sm:hidden space-y-3">
-                 {batchResults.flaggedTransactions.map((tx, index) => (
-                   <div key={index} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                     <div className="flex justify-between items-start mb-2">
-                       <div className="flex-1 min-w-0">
-                         <p className="text-xs text-gray-500 uppercase tracking-wide">Transaction ID</p>
-                         <p className="text-sm font-medium text-gray-900 truncate">
-                           {tx.Transaction_ID || tx.transaction_id}
-                         </p>
-                       </div>
-                       <span className="status-badge status-fraud text-xs">Fraudulent</span>
-                     </div>
-                     <div className="grid grid-cols-2 gap-3 text-xs mb-2">
-                       <div>
-                         <p className="text-gray-500">User ID</p>
-                         <p className="font-medium truncate">{tx.User_ID || tx.user_id}</p>
-                       </div>
-                                              <div>
-                          <p className="text-gray-500">Amount</p>
-                          <p className="font-medium">${formatAmount(tx)}</p>
-                        </div>
-                     </div>
-                     <div className="flex items-center justify-between">
-                       <div className="flex items-center">
-                         <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                           <div 
-                             className="bg-red-500 h-2 rounded-full"
-                             style={{ width: `${(tx.suspicion_score * 100)}%` }}
-                           ></div>
-                         </div>
-                         <span className="text-xs">{(tx.suspicion_score * 100).toFixed(1)}%</span>
-                       </div>
-                       <button 
-                         onClick={() => handleViewTransaction(tx)}
-                         className="text-primary-600 hover:text-primary-900 p-1 rounded hover:bg-primary-50 transition-colors duration-200"
-                       >
-                         <Eye className="h-4 w-4" />
-                       </button>
-                     </div>
-                   </div>
-                 ))}
-               </div>
-
-              {/* Desktop Table View */}
-              <table className="hidden sm:table min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Transaction ID
-                    </th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      User ID
-                    </th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Amount
-                    </th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Suspicion Score
-                    </th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                                                  <tbody className="bg-white divide-y divide-gray-200">
-                   {batchResults.flaggedTransactions.map((tx, index) => (
-                     <tr key={index} className="hover:bg-gray-50">
-                                              <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          <span className="truncate block max-w-32">
-                            {tx.Transaction_ID || tx.transaction_id}
-                          </span>
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <span className="truncate block max-w-24">
-                            {tx.User_ID || tx.user_id}
-                          </span>
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          ${formatAmount(tx)}
-                        </td>
-                       <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                         <div className="flex items-center">
-                           <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                             <div 
-                               className="bg-red-500 h-2 rounded-full"
-                               style={{ width: `${(tx.suspicion_score * 100)}%` }}
-                             ></div>
-                           </div>
-                           <span>{(tx.suspicion_score * 100).toFixed(1)}%</span>
-                         </div>
-                       </td>
-                       <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                         <span className="status-badge status-fraud">
-                           Fraudulent
-                         </span>
-                       </td>
-                       <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                         <button 
-                           onClick={() => handleViewTransaction(tx)}
-                           className="text-primary-600 hover:text-primary-900 p-1 rounded hover:bg-primary-50 transition-colors duration-200"
-                         >
-                           <Eye className="h-4 w-4" />
-                         </button>
-                       </td>
-                     </tr>
-                   ))}
-                 </tbody>
-                                            </table>
-             </div>
-           </div>
-         </div>
-       )}
-
-      {/* Transaction Details Modal */}
-      {isModalOpen && selectedTransaction && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">Transaction Details</h2>
-              <button
-                onClick={closeModal}
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors duration-200"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-            
-            <div className="p-6 space-y-6">
-              {/* Risk Assessment */}
-              <div className={`p-4 rounded-lg ${getRiskLevel(selectedTransaction.suspicion_score).bgColor}`}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Risk Assessment</h3>
-                    <p className={`text-lg font-bold ${getRiskLevel(selectedTransaction.suspicion_score).color}`}>
-                      {getRiskLevel(selectedTransaction.suspicion_score).level}
-                    </p>
-                  </div>
-                  <AlertTriangle className={`h-8 w-8 ${getRiskLevel(selectedTransaction.suspicion_score).color}`} />
-                </div>
-              </div>
-
-              {/* Transaction Information */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-3">
-                    <Hash className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm text-gray-500">Transaction ID</p>
-                      <p className="font-medium text-gray-900">{selectedTransaction.Transaction_ID || selectedTransaction.transaction_id}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3">
-                    <User className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm text-gray-500">User ID</p>
-                      <p className="font-medium text-gray-900">{selectedTransaction.User_ID || selectedTransaction.user_id}</p>
-                    </div>
-                  </div>
-                  
-                                     <div className="flex items-center space-x-3">
-                     <DollarSign className="h-5 w-5 text-gray-400" />
-                     <div>
-                       <p className="text-sm text-gray-500">Amount</p>
-                       <p className="font-medium text-gray-900">${formatAmount(selectedTransaction)}</p>
-                     </div>
-                   </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm text-gray-500 mb-2">Suspicion Score</p>
-                    <div className="bg-gray-200 rounded-full h-3 mb-2">
-                      <div 
-                        className="bg-red-500 h-3 rounded-full transition-all duration-500"
-                        style={{ width: `${(selectedTransaction.suspicion_score * 100)}%` }}
-                      ></div>
-                    </div>
-                    <p className="text-lg font-bold text-gray-900">
-                      {(selectedTransaction.suspicion_score * 100).toFixed(2)}%
-                    </p>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3">
-                    <Calendar className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm text-gray-500">Transaction Type</p>
-                      <p className="font-medium text-gray-900">{selectedTransaction.Transaction_Type || 'N/A'}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-                             {/* Additional Details */}
-               {selectedTransaction.Merchant_Category && (
-                 <div className="border-t border-gray-200 pt-4">
-                   <h4 className="font-semibold text-gray-900 mb-3">Additional Information</h4>
-                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                     <div>
-                       <p className="text-gray-500">Merchant Category</p>
-                       <p className="font-medium text-gray-900">{selectedTransaction.Merchant_Category}</p>
-                     </div>
-                     {selectedTransaction.Location && (
-                       <div>
-                         <p className="text-gray-500">Location</p>
-                         <p className="font-medium text-gray-900">{selectedTransaction.Location}</p>
-                       </div>
-                     )}
-                   </div>
-                 </div>
-               )}
-
-               
-            </div>
-            
-            <div className="flex justify-end p-6 border-t border-gray-200">
-              <button
-                onClick={closeModal}
-                className="btn-secondary"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
