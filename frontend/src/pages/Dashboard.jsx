@@ -52,21 +52,24 @@ const Dashboard = () => {
       description: 'Upload CSV file for bulk fraud detection',
       icon: BarChart3,
       path: '/batch-analysis',
-      color: 'bg-primary-500 hover:bg-primary-600'
+      color: 'bg-primary-500 hover:bg-primary-600',
+      disabled: false
     },
     {
       title: 'Real-Time Analysis',
       description: 'Analyze individual transactions instantly',
       icon: Zap,
       path: '/real-time',
-      color: 'bg-success-500 hover:bg-success-600'
+      color: modelStatus === 'ready' ? 'bg-success-500 hover:bg-success-600' : 'bg-gray-400',
+      disabled: modelStatus !== 'ready'
     },
     {
       title: 'View Results',
       description: 'Check detailed analysis results',
       icon: Shield,
       path: '/results',
-      color: 'bg-warning-500 hover:bg-warning-600'
+      color: (batchResults || realTimeResults) ? 'bg-warning-500 hover:bg-warning-600' : 'bg-gray-400',
+      disabled: !(batchResults || realTimeResults)
     }
   ];
 
@@ -75,20 +78,31 @@ const Dashboard = () => {
       case 'ready':
         return {
           text: 'Model Ready',
+          description: 'Model is trained and ready for analysis',
           color: 'text-success-600',
           bgColor: 'bg-success-50',
           icon: CheckCircle
         };
+      case 'idle':
+        return {
+          text: 'Model Not Ready',
+          description: 'Please run batch analysis to train the model',
+          color: 'text-warning-600',
+          bgColor: 'bg-warning-50',
+          icon: AlertTriangle
+        };
       case 'training':
         return {
           text: 'Training in Progress',
-          color: 'text-warning-600',
-          bgColor: 'bg-warning-50',
+          description: 'Model is currently being trained',
+          color: 'text-blue-600',
+          bgColor: 'bg-blue-50',
           icon: Clock
         };
       case 'error':
         return {
           text: 'Model Error',
+          description: 'An error occurred with the model',
           color: 'text-danger-600',
           bgColor: 'bg-danger-50',
           icon: AlertTriangle
@@ -96,6 +110,7 @@ const Dashboard = () => {
       default:
         return {
           text: 'Initializing',
+          description: 'Connecting to backend services',
           color: 'text-gray-600',
           bgColor: 'bg-gray-50',
           icon: Clock
@@ -129,6 +144,9 @@ const Dashboard = () => {
               <h3 className="text-base sm:text-lg font-semibold text-gray-900">Model Status</h3>
               <p className={`text-sm font-medium ${statusInfo.color}`}>
                 {statusInfo.text}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {statusInfo.description}
               </p>
             </div>
           </div>
@@ -167,26 +185,40 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {quickActions.map((action, index) => {
             const Icon = action.icon;
+            const ActionComponent = action.disabled ? 'div' : Link;
+            const actionProps = action.disabled ? {} : { to: action.path };
+            
             return (
-              <Link
+              <ActionComponent
                 key={index}
-                to={action.path}
-                className="group block p-4 sm:p-6 border border-gray-200 rounded-xl hover:border-primary-300 hover:shadow-lg transition-all duration-200"
+                {...actionProps}
+                className={`group block p-4 sm:p-6 border border-gray-200 rounded-xl transition-all duration-200 ${
+                  action.disabled 
+                    ? 'opacity-50 cursor-not-allowed' 
+                    : 'hover:border-primary-300 hover:shadow-lg cursor-pointer'
+                }`}
               >
                 <div className="flex items-center space-x-3 sm:space-x-4">
                   <div className={`p-2 sm:p-3 rounded-lg ${action.color} text-white transition-colors duration-200 flex-shrink-0`}>
                     <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 group-hover:text-primary-600 transition-colors duration-200 truncate">
+                    <h3 className={`text-base sm:text-lg font-semibold truncate ${
+                      action.disabled ? 'text-gray-500' : 'text-gray-900 group-hover:text-primary-600'
+                    } transition-colors duration-200`}>
                       {action.title}
                     </h3>
                     <p className="text-xs sm:text-sm text-gray-600 mt-1 line-clamp-2">
                       {action.description}
                     </p>
+                    {action.disabled && (
+                      <p className="text-xs text-warning-600 mt-1">
+                        {action.title === 'Real-Time Analysis' ? 'Model must be trained first' : 'No results available'}
+                      </p>
+                    )}
                   </div>
                 </div>
-              </Link>
+              </ActionComponent>
             );
           })}
         </div>
@@ -204,7 +236,13 @@ const Dashboard = () => {
                   <p className="font-medium text-gray-900 text-sm sm:text-base">Batch Analysis Completed</p>
                   <p className="text-xs sm:text-sm text-gray-600 truncate">
                     {batchResults.statistics?.totalTransactions || 0} transactions analyzed
+                    {batchResults.fileName && ` • File: ${batchResults.fileName}`}
                   </p>
+                  {batchResults.analysisTimestamp && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {new Date(batchResults.analysisTimestamp).toLocaleString()}
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -214,11 +252,39 @@ const Dashboard = () => {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-gray-900 text-sm sm:text-base">Real-Time Analysis</p>
                   <p className="text-xs sm:text-sm text-gray-600 truncate">
-                    Transaction analyzed with {realTimeResults.confidence || 0}% confidence
+                    Fraud probability: {(realTimeResults.fraud_probability * 100).toFixed(2)}% • 
+                    Risk level: {realTimeResults.risk_level || 'Unknown'}
                   </p>
+                  {realTimeResults.analysisTimestamp && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {new Date(realTimeResults.analysisTimestamp).toLocaleString()}
+                    </p>
+                  )}
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Getting Started Guide */}
+      {!batchResults && modelStatus === 'idle' && (
+        <div className="card bg-primary-50 border-primary-200">
+          <div className="flex items-start space-x-3">
+            <Shield className="h-5 w-5 text-primary-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-primary-900 text-sm sm:text-base">Getting Started</h3>
+              <p className="text-primary-800 text-xs sm:text-sm mt-1">
+                To begin using the fraud detection system, upload a CSV file with transaction data using the Batch Analysis feature. 
+                This will train the model and enable real-time analysis capabilities.
+              </p>
+              <Link 
+                to="/batch-analysis" 
+                className="inline-block mt-2 text-xs font-medium text-primary-600 hover:text-primary-700"
+              >
+                Start Batch Analysis →
+              </Link>
+            </div>
           </div>
         </div>
       )}

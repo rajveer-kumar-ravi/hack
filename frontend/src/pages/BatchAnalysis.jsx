@@ -76,7 +76,7 @@ const BatchAnalysis = () => {
                 Drag and drop a CSV file here, or click to select
               </p>
               <p className="text-xs sm:text-sm text-gray-500">
-                Supports CSV files with transaction data
+                Supports CSV files with transaction data (e.g., credit card transactions)
               </p>
             </div>
           )}
@@ -154,6 +154,20 @@ const BatchAnalysis = () => {
         <div className="card">
           <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Analysis Results</h2>
           
+          {/* Analysis Info */}
+          <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-blue-900 text-sm sm:text-base">Analysis Completed</h3>
+                <p className="text-blue-800 text-xs sm:text-sm">
+                  File: {batchResults.fileName || 'Unknown'} | 
+                  Timestamp: {new Date(batchResults.analysisTimestamp).toLocaleString()}
+                </p>
+              </div>
+              <CheckCircle className="h-5 w-5 text-blue-600 flex-shrink-0" />
+            </div>
+          </div>
+          
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6 mb-4 sm:mb-6">
             <div className="text-center p-3 sm:p-4 bg-blue-50 rounded-lg">
               <p className="text-lg sm:text-2xl font-bold text-blue-600">
@@ -202,9 +216,34 @@ const BatchAnalysis = () => {
             </div>
           </div>
 
-          {batchResults.flaggedTransactions && (
+          {/* Confusion Matrix Summary */}
+          <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gray-50 rounded-lg">
+            <h3 className="font-semibold text-gray-900 mb-3 text-sm sm:text-base">Confusion Matrix Summary</h3>
+            <div className="grid grid-cols-2 gap-4 text-center">
+              <div>
+                <p className="text-lg font-bold text-success-600">{batchResults.statistics?.trueNegatives || 0}</p>
+                <p className="text-xs text-gray-600">True Negatives</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-danger-600">{batchResults.statistics?.falsePositives || 0}</p>
+                <p className="text-xs text-gray-600">False Positives</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-warning-600">{batchResults.statistics?.falseNegatives || 0}</p>
+                <p className="text-xs text-gray-600">False Negatives</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-primary-600">{batchResults.statistics?.truePositives || 0}</p>
+                <p className="text-xs text-gray-600">True Positives</p>
+              </div>
+            </div>
+          </div>
+
+          {batchResults.flaggedTransactions && batchResults.flaggedTransactions.length > 0 && (
             <div className="mt-4 sm:mt-6">
-              <h3 className="font-semibold text-gray-900 mb-3 sm:mb-4 text-sm sm:text-base">Flagged Transactions</h3>
+              <h3 className="font-semibold text-gray-900 mb-3 sm:mb-4 text-sm sm:text-base">
+                Flagged Transactions ({batchResults.totalFlagged || batchResults.flaggedTransactions.length})
+              </h3>
               <div className="overflow-x-auto">
                 <div className="min-w-full">
                   {/* Mobile Card View */}
@@ -215,7 +254,7 @@ const BatchAnalysis = () => {
                           <div className="flex-1 min-w-0">
                             <p className="text-xs text-gray-500 uppercase tracking-wide">Transaction ID</p>
                             <p className="text-sm font-medium text-gray-900 truncate">
-                              {tx.Transaction_ID || tx.transaction_id}
+                              {tx.Transaction_ID || tx.transaction_id || `TX_${index}`}
                             </p>
                           </div>
                           <span className="status-badge status-fraud text-xs">Fraudulent</span>
@@ -223,7 +262,7 @@ const BatchAnalysis = () => {
                         <div className="grid grid-cols-2 gap-3 text-xs">
                           <div>
                             <p className="text-gray-500">Amount</p>
-                            <p className="font-medium">${tx.Transaction_Amount || tx.amount}</p>
+                            <p className="font-medium">${tx.Transaction_Amount || tx.amount || 0}</p>
                           </div>
                           <div>
                             <p className="text-gray-500">Suspicion Score</p>
@@ -257,11 +296,11 @@ const BatchAnalysis = () => {
                         <tr key={index}>
                           <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             <span className="truncate block max-w-32">
-                              {tx.Transaction_ID || tx.transaction_id}
+                              {tx.Transaction_ID || tx.transaction_id || `TX_${index}`}
                             </span>
                           </td>
                           <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            ${tx.Transaction_Amount || tx.amount}
+                            ${tx.Transaction_Amount || tx.amount || 0}
                           </td>
                           <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {(tx.suspicion_score * 100).toFixed(2)}%

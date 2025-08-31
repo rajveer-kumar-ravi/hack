@@ -8,19 +8,21 @@ import json
 from werkzeug.utils import secure_filename
 import pickle
 from datetime import datetime
+import time
 
-# Import the existing fraud detection functions
-from backend import (
-    load_df, preprocess_for_models, supervised_scores, 
-    unsupervised_scores, tune_threshold_and_eval, 
-    gnn_baseline_flagging, run_chained_pipeline
-)
+# Import the fraud detection functions from the notebook code
+import fraud_detection
 
 app = Flask(__name__)
 # Allow large CSV uploads. Default 2048MB (2GB). Override with env MAX_CONTENT_MB.
 MAX_CONTENT_MB = int(os.environ.get('MAX_CONTENT_MB', '2048'))
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_MB * 1024 * 1024
 CORS(app, origins=['http://localhost:3000', 'http://localhost:3001'], supports_credentials=True)
+
+# Reduce Flask logging verbosity
+import logging
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
 
 # Global variables to store models and results
 models = {
@@ -32,11 +34,15 @@ models = {
     'feature_columns': None
 }
 
-# Configuration
+# Rate limiting for model status endpoint
+last_status_check = 0
+STATUS_CHECK_COOLDOWN = int(os.environ.get('STATUS_CHECK_COOLDOWN', '30'))  # seconds between status checks (default 30s)
+
+# Configuration for credit card dataset
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'csv'}
-TARGET_COL = 'isFraud'  # Updated to match the dataset
-ID_COLS = ['nameOrig', 'nameDest']  # Updated to match the dataset
+TARGET_COL = 'Class'  # Credit card dataset uses 'Class' column
+ID_COLS = []  # No ID columns in credit card dataset
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
@@ -77,6 +83,28 @@ def calculate_statistics(y_true, y_pred, sup_prob, unsup_score, combined_score):
 @app.route('/api/model-status', methods=['GET'])
 def get_model_status():
     """Get the current status of the fraud detection model."""
+    global last_status_check
+    
+    # Rate limiting to prevent log spam
+    current_time = time.time()
+    if current_time - last_status_check < STATUS_CHECK_COOLDOWN:
+        # Return cached response without logging
+        if models['supervised_model'] is not None:
+            status = 'ready'
+            message = 'Model is ready for analysis'
+        else:
+            status = 'idle'
+            message = 'Model needs to be trained with data'
+        
+        return jsonify({
+            'status': status,
+            'message': message,
+            'timestamp': datetime.now().isoformat()
+        })
+    
+    # Update last check time and log this request (but only occasionally)
+    last_status_check = current_time
+    
     if models['supervised_model'] is not None:
         status = 'ready'
         message = 'Model is ready for analysis'
@@ -118,10 +146,105 @@ def batch_analysis():
         os.close(fd)
         file.save(tmp_path)
         
-        # Run the fraud detection pipeline
+        # Run the fraud detection pipeline using your notebook code
         print(f"Starting batch analysis for file: {original_filename}")
+        
         try:
-            result = run_chained_pipeline(tmp_path, TARGET_COL, sample_n=sample_size, id_cols=ID_COLS)
+            # Load and process the data using your notebook functions
+            df = pd.read_csv(tmp_path)
+            
+            # Clean duplicates
+            df.drop_duplicates(inplace=True)
+            
+            # Feature selection based on correlation with target
+            if TARGET_COL in df.columns:
+                selected_features = df.corr()[TARGET_COL][:-1].abs().sort_values().tail(14)
+                df_selected = selected_features.to_frame().reset_index()
+                selected_features = df_selected['index']
+                
+                # Scale amount column if it exists
+                if 'Amount' in df.columns:
+                    amount = df['Amount'].values.reshape(-1, 1)
+                    from sklearn.preprocessing import StandardScaler
+                    scaler = StandardScaler()
+                    amount_scaled = scaler.fit_transform(amount)
+                    df['Amount'] = amount_scaled
+                
+                X = df[selected_features]
+                y = df[TARGET_COL]
+            else:
+                X = df.drop(columns=[TARGET_COL])
+                y = df[TARGET_COL]
+            
+            # Split data
+            from sklearn.model_selection import train_test_split
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
+            
+            # Apply balancing techniques
+            print("Applying Random OverSampler...")
+            X_train_ros, y_train_ros = fraud_detection.balancedWithRandomOverSampler(X_train, y_train)
+            
+            print("Applying SMOTE...")
+            X_train_smote, y_train_smote = fraud_detection.balanceWithSMOTE(X_train, y_train)
+            
+            # Train models
+            print("Training LightGBM model...")
+            import lightgbm as lgb
+            model = lgb.LGBMClassifier(random_state=42, n_estimators=100, verbose=-1)
+            model.fit(X_train_ros, y_train_ros)
+            
+            # Get predictions
+            y_pred = model.predict(X_test)
+            y_prob = model.predict_proba(X_test)[:, 1]
+            
+            # Calculate statistics
+            from sklearn.metrics import accuracy_score, precision_recall_fscore_support, confusion_matrix
+            accuracy = accuracy_score(y_test, y_pred)
+            precision, recall, f1, _ = precision_recall_fscore_support(y_test, y_pred, average='binary', zero_division=0)
+            
+            # Confusion matrix
+            tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
+            
+            statistics = {
+                'accuracy': float(accuracy),
+                'precision': float(precision),
+                'recall': float(recall),
+                'f1Score': float(f1),
+                'totalTransactions': int(len(y_test)),
+                'fraudulentTransactions': int(sum(y_pred)),
+                'legitimateTransactions': int(len(y_test) - sum(y_pred)),
+                'truePositives': int(tp),
+                'falsePositives': int(fp),
+                'trueNegatives': int(tn),
+                'falseNegatives': int(fn)
+            }
+            
+            # Prepare flagged transactions
+            flagged_indices = np.where(y_pred == 1)[0]
+            flagged_transactions = []
+            
+            for idx in flagged_indices:
+                tx_data = df.iloc[idx]
+                flagged_transactions.append({
+                    'Transaction_ID': f'TX_{idx}',
+                    'User_ID': f'USER_{idx}',
+                    'Transaction_Amount': float(tx_data.get('Amount', 0)),
+                    'suspicion_score': float(y_prob[idx])
+                })
+            
+            # Store model for real-time analysis
+            models['supervised_model'] = model
+            models['feature_columns'] = X.columns.tolist()
+            
+            return jsonify({
+                'success': True,
+                'statistics': statistics,
+                'flaggedTransactions': flagged_transactions,
+                'totalFlagged': len(flagged_transactions),
+                'analysisTimestamp': datetime.now().isoformat(),
+                'fileName': original_filename
+            })
+            
         finally:
             # Ensure temporary file is removed even if processing fails
             try:
@@ -129,50 +252,6 @@ def batch_analysis():
                     os.remove(tmp_path)
             except Exception as cleanup_err:
                 print(f"Warning: failed to remove temp file: {cleanup_err}")
-        
-        if result is None:
-            return jsonify({'error': 'Analysis failed. Please check your data format.'}), 500
-        
-        # Extract results
-        df = result['df']
-        y_true = result['y']
-        final_pred = result['best']['pred']
-        sup_prob = result['sup_prob']
-        unsup_score = result['unsup_score']
-        combined_score = result['best']['combined']
-        
-        # Calculate statistics
-        statistics = calculate_statistics(y_true, final_pred, sup_prob, unsup_score, combined_score)
-        
-        # Prepare flagged transactions
-        flagged_indices = np.where(final_pred == 1)[0]
-        flagged_transactions = []
-        
-        for idx in flagged_indices:
-            tx_data = df.iloc[idx]
-            flagged_transactions.append({
-                'Transaction_ID': str(tx_data.get('nameOrig', f'TX_{idx}')),
-                'User_ID': str(tx_data.get('nameDest', f'USER_{idx}')),
-                'Transaction_Amount': float(tx_data.get('amount', 0)),
-                'suspicion_score': float(combined_score[idx])
-            })
-        
-        # Store models and preprocess artifacts for real-time analysis
-        models['supervised_model'] = result['sup_model']
-        models['isolation_model'] = result['iso_model']
-        models['encoders'] = result.get('encoders', {})
-        models['threshold_config'] = result['best']
-        models['scaler'] = result.get('scaler')
-        models['feature_columns'] = result.get('feature_columns')
-        
-        return jsonify({
-            'success': True,
-            'statistics': statistics,
-            'flaggedTransactions': flagged_transactions,
-            'totalFlagged': len(flagged_transactions),
-            'analysisTimestamp': datetime.now().isoformat(),
-            'fileName': original_filename
-        })
         
     except Exception as e:
         print(f"Error in batch analysis: {str(e)}")
@@ -274,6 +353,20 @@ def health_check():
         'status': 'healthy',
         'timestamp': datetime.now().isoformat(),
         'model_loaded': models['supervised_model'] is not None
+    })
+
+@app.route('/api/debug/rate-limit', methods=['GET'])
+def debug_rate_limit():
+    """Debug endpoint to check rate limiting status."""
+    global last_status_check
+    current_time = time.time()
+    time_since_last = current_time - last_status_check
+    return jsonify({
+        'last_status_check': last_status_check,
+        'current_time': current_time,
+        'time_since_last': time_since_last,
+        'cooldown_remaining': max(0, STATUS_CHECK_COOLDOWN - time_since_last),
+        'rate_limited': time_since_last < STATUS_CHECK_COOLDOWN
     })
 
 @app.errorhandler(413)

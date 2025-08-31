@@ -15,7 +15,6 @@ const Results = () => {
     
     return [
       { name: 'Legitimate', value: batchResults.statistics.legitimateTransactions, color: '#10B981' },
-      { name: 'Suspicious', value: batchResults.statistics.suspiciousTransactions || 0, color: '#F59E0B' },
       { name: 'Fraudulent', value: batchResults.statistics.fraudulentTransactions, color: '#EF4444' }
     ];
   };
@@ -32,12 +31,12 @@ const Results = () => {
   };
 
   const exportResults = () => {
-    if (!batchResults) return;
+    if (!batchResults?.flaggedTransactions) return;
     
     const csvContent = "data:text/csv;charset=utf-8," + 
       "Transaction_ID,User_ID,Transaction_Amount,Suspicion_Score,Status\n" +
-      batchResults.flaggedTransactions?.map(tx => 
-        `${tx.Transaction_ID || tx.transaction_id},${tx.User_ID || tx.user_id},${tx.Transaction_Amount || tx.amount},${tx.suspicion_score},Fraudulent`
+      batchResults.flaggedTransactions.map(tx => 
+        `${tx.Transaction_ID || tx.transaction_id || 'N/A'},${tx.User_ID || tx.user_id || 'N/A'},${tx.Transaction_Amount || tx.amount || 0},${tx.suspicion_score || 0},Fraudulent`
       ).join('\n');
     
     const encodedUri = encodeURI(csvContent);
@@ -207,6 +206,31 @@ const Results = () => {
         </div>
       )}
 
+      {/* Confusion Matrix Summary */}
+      {batchResults?.statistics && (
+        <div className="card">
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Confusion Matrix Summary</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="text-center p-4 bg-success-50 rounded-lg">
+              <p className="text-2xl font-bold text-success-600">{batchResults.statistics.trueNegatives || 0}</p>
+              <p className="text-sm text-gray-600">True Negatives</p>
+            </div>
+            <div className="text-center p-4 bg-danger-50 rounded-lg">
+              <p className="text-2xl font-bold text-danger-600">{batchResults.statistics.falsePositives || 0}</p>
+              <p className="text-sm text-gray-600">False Positives</p>
+            </div>
+            <div className="text-center p-4 bg-warning-50 rounded-lg">
+              <p className="text-2xl font-bold text-warning-600">{batchResults.statistics.falseNegatives || 0}</p>
+              <p className="text-sm text-gray-600">False Negatives</p>
+            </div>
+            <div className="text-center p-4 bg-primary-50 rounded-lg">
+              <p className="text-2xl font-bold text-primary-600">{batchResults.statistics.truePositives || 0}</p>
+              <p className="text-sm text-gray-600">True Positives</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Real-Time Results */}
       {realTimeResults && (
         <div className="card">
@@ -227,8 +251,29 @@ const Results = () => {
             <div className="text-center p-3 sm:p-4 bg-gray-50 rounded-lg">
               <h3 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">Risk Level</h3>
               <p className="text-xl sm:text-2xl font-bold text-warning-600">
-                {realTimeResults.fraud_probability >= 0.8 ? 'High' : 
-                 realTimeResults.fraud_probability >= 0.5 ? 'Medium' : 'Low'}
+                {realTimeResults.risk_level || 'Unknown'}
+              </p>
+            </div>
+          </div>
+          
+          {/* Detailed Scores */}
+          <div className="mt-4 sm:mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <h4 className="font-semibold text-gray-900 mb-2 text-sm">Supervised Score</h4>
+              <p className="text-lg font-bold text-primary-600">
+                {(realTimeResults.supervised_score * 100).toFixed(2)}%
+              </p>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <h4 className="font-semibold text-gray-900 mb-2 text-sm">Anomaly Score</h4>
+              <p className="text-lg font-bold text-warning-600">
+                {(realTimeResults.anomaly_score * 100).toFixed(2)}%
+              </p>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <h4 className="font-semibold text-gray-900 mb-2 text-sm">Combined Score</h4>
+              <p className="text-lg font-bold text-danger-600">
+                {(realTimeResults.combined_score * 100).toFixed(2)}%
               </p>
             </div>
           </div>

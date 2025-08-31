@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 const FraudDetectionContext = createContext();
@@ -69,9 +69,23 @@ export const FraudDetectionProvider = ({ children }) => {
   const [state, dispatch] = useReducer(fraudDetectionReducer, initialState);
 
   const api = axios.create({
-    baseURL: process.env.REACT_APP_API_URL || '',
+    baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000',
     timeout: 300000, // 5 minutes for batch processing
   });
+
+  const getModelStatus = useCallback(async () => {
+    try {
+      console.log('Fetching model status from:', api.defaults.baseURL);
+      const response = await api.get('/api/model-status');
+      console.log('Model status response:', response.data);
+      dispatch({ type: 'SET_MODEL_STATUS', payload: response.data.status });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching model status:', error);
+      console.error('Error details:', error.response?.data);
+      // Don't set error for status check failures
+    }
+  }, [api]);
 
   const runBatchAnalysis = async (file, sampleSize = null) => {
     dispatch({ type: 'SET_LOADING', payload: true });
@@ -92,12 +106,22 @@ export const FraudDetectionProvider = ({ children }) => {
       });
 
       console.log('Batch analysis completed:', response.data);
-      dispatch({ type: 'SET_BATCH_RESULTS', payload: response.data });
       
-      // Update model status after successful analysis
-      await getModelStatus();
-      
-      return response.data;
+      if (response.data.success) {
+        dispatch({ type: 'SET_BATCH_RESULTS', payload: response.data });
+        
+        // Update statistics
+        if (response.data.statistics) {
+          dispatch({ type: 'SET_STATISTICS', payload: response.data.statistics });
+        }
+        
+        // Update model status after successful analysis
+        await getModelStatus();
+        
+        return response.data;
+      } else {
+        throw new Error(response.data.error || 'Analysis failed');
+      }
     } catch (error) {
       console.error('Batch analysis failed:', error);
       const errorMessage = error.response?.data?.error || error.message || 'An error occurred during batch analysis';
@@ -112,25 +136,17 @@ export const FraudDetectionProvider = ({ children }) => {
     
     try {
       const response = await api.post('/api/real-time-analysis', transactionData);
-      dispatch({ type: 'SET_REALTIME_RESULTS', payload: response.data });
-      return response.data;
+      
+      if (response.data.success) {
+        dispatch({ type: 'SET_REALTIME_RESULTS', payload: response.data });
+        return response.data;
+      } else {
+        throw new Error(response.data.error || 'Real-time analysis failed');
+      }
     } catch (error) {
       const errorMessage = error.response?.data?.error || error.message || 'An error occurred during real-time analysis';
       dispatch({ type: 'SET_ERROR', payload: errorMessage });
       throw error;
-    }
-  };
-
-  const getModelStatus = async () => {
-    try {
-      console.log('Fetching model status from:', api.defaults.baseURL);
-      const response = await api.get('/api/model-status');
-      console.log('Model status response:', response.data);
-      dispatch({ type: 'SET_MODEL_STATUS', payload: response.data.status });
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching model status:', error);
-      console.error('Error details:', error.response?.data);
     }
   };
 
@@ -141,13 +157,13 @@ export const FraudDetectionProvider = ({ children }) => {
   useEffect(() => {
     getModelStatus();
     
-    // Set up periodic status check
+    // Set up periodic status check - reduced frequency to avoid too many logs
     const interval = setInterval(() => {
       getModelStatus();
-    }, 30000); // Check every 30 seconds
+    }, 300000); // Check every 5 minutes instead of 30 seconds
     
     return () => clearInterval(interval);
-  }, []);
+  }, [getModelStatus]);
 
   const value = {
     ...state,

@@ -1,32 +1,40 @@
 import React, { useState } from 'react';
-import { Zap, AlertTriangle, CheckCircle, Loader, Shield } from 'lucide-react';
+import { Zap, AlertTriangle, Loader, Shield } from 'lucide-react';
 import { useFraudDetection } from '../context/FraudDetectionContext';
 
 const RealTimeAnalysis = () => {
-  const { analyzeRealTimeTransaction, loading, error, realTimeResults } = useFraudDetection();
+  const { analyzeRealTimeTransaction, loading, error, realTimeResults, modelStatus } = useFraudDetection();
   const [formData, setFormData] = useState({
-    Transaction_ID: '',
-    User_ID: '',
-    Transaction_Amount: '',
-    Transaction_Type: 'CASH_IN',
-    Merchant_Category: '',
-    Location: '',
-    Time_of_Day: '',
-    Day_of_Week: '',
-    Transaction_Frequency: '',
-    Average_Transaction_Amount: '',
-    Account_Age: '',
-    Risk_Score: ''
+    Amount: '',
+    V1: '0',
+    V2: '0',
+    V3: '0',
+    V4: '0',
+    V5: '0',
+    V6: '0',
+    V7: '0',
+    V8: '0',
+    V9: '0',
+    V10: '0',
+    V11: '0',
+    V12: '0',
+    V13: '0',
+    V14: '0',
+    V15: '0',
+    V16: '0',
+    V17: '0',
+    V18: '0',
+    V19: '0',
+    V20: '0',
+    V21: '0',
+    V22: '0',
+    V23: '0',
+    V24: '0',
+    V25: '0',
+    V26: '0',
+    V27: '0',
+    V28: '0'
   });
-
-  const transactionTypes = [
-    'CASH_IN', 'CASH_OUT', 'TRANSFER', 'PAYMENT', 'DEBIT'
-  ];
-
-  const merchantCategories = [
-    'FOOD_AND_DRINK', 'SHOPPING', 'TRANSPORT', 'ENTERTAINMENT', 
-    'UTILITIES', 'HEALTHCARE', 'EDUCATION', 'TRAVEL', 'OTHER'
-  ];
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -39,7 +47,41 @@ const RealTimeAnalysis = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await analyzeRealTimeTransaction(formData);
+      // Convert numeric fields
+      const processedData = {
+        ...formData,
+        Amount: parseFloat(formData.Amount) || 0,
+        V1: parseFloat(formData.V1) || 0,
+        V2: parseFloat(formData.V2) || 0,
+        V3: parseFloat(formData.V3) || 0,
+        V4: parseFloat(formData.V4) || 0,
+        V5: parseFloat(formData.V5) || 0,
+        V6: parseFloat(formData.V6) || 0,
+        V7: parseFloat(formData.V7) || 0,
+        V8: parseFloat(formData.V8) || 0,
+        V9: parseFloat(formData.V9) || 0,
+        V10: parseFloat(formData.V10) || 0,
+        V11: parseFloat(formData.V11) || 0,
+        V12: parseFloat(formData.V12) || 0,
+        V13: parseFloat(formData.V13) || 0,
+        V14: parseFloat(formData.V14) || 0,
+        V15: parseFloat(formData.V15) || 0,
+        V16: parseFloat(formData.V16) || 0,
+        V17: parseFloat(formData.V17) || 0,
+        V18: parseFloat(formData.V18) || 0,
+        V19: parseFloat(formData.V19) || 0,
+        V20: parseFloat(formData.V20) || 0,
+        V21: parseFloat(formData.V21) || 0,
+        V22: parseFloat(formData.V22) || 0,
+        V23: parseFloat(formData.V23) || 0,
+        V24: parseFloat(formData.V24) || 0,
+        V25: parseFloat(formData.V25) || 0,
+        V26: parseFloat(formData.V26) || 0,
+        V27: parseFloat(formData.V27) || 0,
+        V28: parseFloat(formData.V28) || 0
+      };
+      
+      await analyzeRealTimeTransaction(processedData);
     } catch (error) {
       console.error('Real-time analysis failed:', error);
     }
@@ -65,9 +107,24 @@ const RealTimeAnalysis = () => {
           Real-Time Analysis
         </h1>
         <p className="text-base sm:text-lg text-gray-600 px-4">
-          Analyze individual transactions for fraud detection in real-time
+          Analyze individual credit card transactions for fraud detection in real-time
         </p>
       </div>
+
+      {/* Model Status Warning */}
+      {modelStatus === 'idle' && (
+        <div className="card bg-warning-50 border-warning-200">
+          <div className="flex items-center space-x-3">
+            <AlertTriangle className="h-5 w-5 text-warning-600 flex-shrink-0" />
+            <div>
+              <h3 className="font-semibold text-warning-900">Model Not Ready</h3>
+              <p className="text-warning-800 text-sm">
+                Please run batch analysis first to train the model before using real-time analysis.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
         {/* Input Form */}
@@ -75,49 +132,16 @@ const RealTimeAnalysis = () => {
           <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Transaction Details</h2>
           
           <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-            {/* Basic Information */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="Transaction_ID" className="block text-sm font-medium text-gray-700 mb-2">
-                  Transaction ID *
-                </label>
-                <input
-                  type="text"
-                  id="Transaction_ID"
-                  name="Transaction_ID"
-                  value={formData.Transaction_ID}
-                  onChange={handleInputChange}
-                  required
-                  className="input-field"
-                  placeholder="Enter transaction ID"
-                />
-              </div>
-              <div>
-                <label htmlFor="User_ID" className="block text-sm font-medium text-gray-700 mb-2">
-                  User ID *
-                </label>
-                <input
-                  type="text"
-                  id="User_ID"
-                  name="User_ID"
-                  value={formData.User_ID}
-                  onChange={handleInputChange}
-                  required
-                  className="input-field"
-                  placeholder="Enter user ID"
-                />
-              </div>
-            </div>
-
+            {/* Amount */}
             <div>
-              <label htmlFor="Transaction_Amount" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="Amount" className="block text-sm font-medium text-gray-700 mb-2">
                 Transaction Amount *
               </label>
               <input
                 type="number"
-                id="Transaction_Amount"
-                name="Transaction_Amount"
-                value={formData.Transaction_Amount}
+                id="Amount"
+                name="Amount"
+                value={formData.Amount}
                 onChange={handleInputChange}
                 required
                 step="0.01"
@@ -127,159 +151,33 @@ const RealTimeAnalysis = () => {
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="Transaction_Type" className="block text-sm font-medium text-gray-700 mb-2">
-                  Transaction Type
-                </label>
-                <select
-                  id="Transaction_Type"
-                  name="Transaction_Type"
-                  value={formData.Transaction_Type}
-                  onChange={handleInputChange}
-                  className="input-field"
-                >
-                  {transactionTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="Merchant_Category" className="block text-sm font-medium text-gray-700 mb-2">
-                  Merchant Category
-                </label>
-                <select
-                  id="Merchant_Category"
-                  name="Merchant_Category"
-                  value={formData.Merchant_Category}
-                  onChange={handleInputChange}
-                  className="input-field"
-                >
-                  <option value="">Select category</option>
-                  {merchantCategories.map(category => (
-                    <option key={category} value={category}>{category}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
+            {/* V1-V28 Features */}
             <div>
-              <label htmlFor="Location" className="block text-sm font-medium text-gray-700 mb-2">
-                Location
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Feature Values (V1-V28)
               </label>
-              <input
-                type="text"
-                id="Location"
-                name="Location"
-                value={formData.Location}
-                onChange={handleInputChange}
-                className="input-field"
-                placeholder="Enter location"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="Time_of_Day" className="block text-sm font-medium text-gray-700 mb-2">
-                  Time of Day
-                </label>
-                <input
-                  type="time"
-                  id="Time_of_Day"
-                  name="Time_of_Day"
-                  value={formData.Time_of_Day}
-                  onChange={handleInputChange}
-                  className="input-field"
-                />
+              <p className="text-xs text-gray-500 mb-3">
+                These are PCA-transformed features. For demo purposes, you can use default values or adjust them.
+              </p>
+              <div className="grid grid-cols-4 gap-2">
+                {Array.from({ length: 28 }, (_, i) => i + 1).map(num => (
+                  <div key={num}>
+                    <label htmlFor={`V${num}`} className="block text-xs text-gray-500 mb-1">
+                      V{num}
+                    </label>
+                    <input
+                      type="number"
+                      id={`V${num}`}
+                      name={`V${num}`}
+                      value={formData[`V${num}`]}
+                      onChange={handleInputChange}
+                      step="0.01"
+                      className="input-field text-xs py-1"
+                      placeholder="0"
+                    />
+                  </div>
+                ))}
               </div>
-              <div>
-                <label htmlFor="Day_of_Week" className="block text-sm font-medium text-gray-700 mb-2">
-                  Day of Week
-                </label>
-                <select
-                  id="Day_of_Week"
-                  name="Day_of_Week"
-                  value={formData.Day_of_Week}
-                  onChange={handleInputChange}
-                  className="input-field"
-                >
-                  <option value="">Select day</option>
-                  <option value="Monday">Monday</option>
-                  <option value="Tuesday">Tuesday</option>
-                  <option value="Wednesday">Wednesday</option>
-                  <option value="Thursday">Thursday</option>
-                  <option value="Friday">Friday</option>
-                  <option value="Saturday">Saturday</option>
-                  <option value="Sunday">Sunday</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Behavioral Features */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div>
-                <label htmlFor="Transaction_Frequency" className="block text-sm font-medium text-gray-700 mb-2">
-                  Transaction Frequency
-                </label>
-                <input
-                  type="number"
-                  id="Transaction_Frequency"
-                  name="Transaction_Frequency"
-                  value={formData.Transaction_Frequency}
-                  onChange={handleInputChange}
-                  min="0"
-                  className="input-field"
-                  placeholder="Per day"
-                />
-              </div>
-              <div>
-                <label htmlFor="Average_Transaction_Amount" className="block text-sm font-medium text-gray-700 mb-2">
-                  Avg Transaction Amount
-                </label>
-                <input
-                  type="number"
-                  id="Average_Transaction_Amount"
-                  name="Average_Transaction_Amount"
-                  value={formData.Average_Transaction_Amount}
-                  onChange={handleInputChange}
-                  step="0.01"
-                  min="0"
-                  className="input-field"
-                  placeholder="Average amount"
-                />
-              </div>
-              <div className="sm:col-span-2 lg:col-span-1">
-                <label htmlFor="Account_Age" className="block text-sm font-medium text-gray-700 mb-2">
-                  Account Age (days)
-                </label>
-                <input
-                  type="number"
-                  id="Account_Age"
-                  name="Account_Age"
-                  value={formData.Account_Age}
-                  onChange={handleInputChange}
-                  min="0"
-                  className="input-field"
-                  placeholder="Days"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="Risk_Score" className="block text-sm font-medium text-gray-700 mb-2">
-                Risk Score (0-100)
-              </label>
-              <input
-                type="number"
-                id="Risk_Score"
-                name="Risk_Score"
-                value={formData.Risk_Score}
-                onChange={handleInputChange}
-                min="0"
-                max="100"
-                className="input-field"
-                placeholder="Risk score"
-              />
             </div>
 
             {/* Error Display */}
@@ -295,9 +193,9 @@ const RealTimeAnalysis = () => {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || modelStatus === 'idle'}
               className={`w-full py-3 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                loading
+                loading || modelStatus === 'idle'
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'btn-primary'
               }`}
@@ -364,7 +262,7 @@ const RealTimeAnalysis = () => {
               <div className="mb-4 sm:mb-6">
                 <h3 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">Recommendation</h3>
                 <p className="text-gray-700 bg-gray-50 p-3 rounded-lg text-sm sm:text-base">
-                  {getRecommendation(realTimeResults.fraud_probability)}
+                  {realTimeResults.recommendation || getRecommendation(realTimeResults.fraud_probability)}
                 </p>
               </div>
 
@@ -398,10 +296,13 @@ const RealTimeAnalysis = () => {
               <div className="text-center py-8 sm:py-12">
                 <Shield className="h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
                 <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
-                  Ready for Analysis
+                  {modelStatus === 'idle' ? 'Model Not Ready' : 'Ready for Analysis'}
                 </h3>
                 <p className="text-gray-600 text-sm sm:text-base px-4">
-                  Fill in the transaction details and click "Analyze Transaction" to get started.
+                  {modelStatus === 'idle' 
+                    ? 'Please run batch analysis first to train the model.'
+                    : 'Fill in the transaction details and click "Analyze Transaction" to get started.'
+                  }
                 </p>
               </div>
             </div>

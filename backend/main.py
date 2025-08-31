@@ -18,7 +18,10 @@ if __name__ == '__main__':
     print("- GET  /api/model-status - Get model status")
     print("- POST /api/batch-analysis - Upload CSV for batch analysis")
     print("- POST /api/real-time-analysis - Analyze single transaction")
+    print("- GET  /api/debug/rate-limit - Debug rate limiting")
     print("\nServer will start on http://localhost:5000")
+    print(f"Status check cooldown: {os.environ.get('STATUS_CHECK_COOLDOWN', '30')} seconds")
+    print("Rate limiting is ACTIVE to reduce log spam")
     
     # Respect environment variable to control debug to avoid dev server restarts causing request races
     debug_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
