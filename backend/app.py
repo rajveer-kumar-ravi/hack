@@ -292,19 +292,63 @@ def batch_analysis():
                 'falseNegatives': int(fn)
             }
             
-            # Prepare flagged transactions
+            # Prepare flagged transactions with complete original data
             logger.info(f"Preparing flagged transactions...")
             flagged_indices = np.where(y_pred == 1)[0]
             flagged_transactions = []
             
+            # IMPORTANT: Create a copy of the original dataframe BEFORE any modifications
+            original_complete_df = df.copy()
+            logger.info(f"Original complete dataframe columns: {list(original_complete_df.columns)}")
+            
+            # Get the actual indices from the test set that correspond to the original dataframe
+            test_indices = X_test.index
+            logger.info(f"Test set indices: {test_indices[:10]} (first 10)")
+            logger.info(f"Test set shape: {X_test.shape}")
+            logger.info(f"Original dataframe shape: {original_complete_df.shape}")
+            
+            # Debug: Log the columns we're working with
+            logger.info(f"Original complete dataframe columns: {list(original_complete_df.columns)}")
+            
             for idx in flagged_indices:
-                tx_data = X_test.iloc[idx]
-                flagged_transactions.append({
-                    'Transaction_ID': f'TX_{idx}',
-                    'User_ID': f'USER_{idx}',
-                    'Transaction_Amount': float(tx_data.get('Amount', 0)) if 'Amount' in tx_data else 0.0,
-                    'suspicion_score': float(y_prob[idx])
-                })
+                try:
+                    # Get the actual index in the original dataframe
+                    actual_idx = test_indices[idx]
+                    logger.info(f"Processing flagged transaction {idx}: mapped to original index {actual_idx}")
+                    
+                    # Get the original transaction data with all columns
+                    original_tx = original_complete_df.iloc[actual_idx]
+                    tx_data = X_test.iloc[idx]
+                    
+                    # Create transaction object with all original columns
+                    transaction = {}
+                    
+                    # Add all original columns
+                    for col in original_complete_df.columns:
+                        transaction[col] = original_tx[col]
+                    
+                    # Add fraud detection specific fields
+                    transaction['suspicion_score'] = float(y_prob[idx])
+                    transaction['predicted_class'] = 'Fraudulent'
+                    transaction['model_confidence'] = float(y_prob[idx])
+                    
+                    flagged_transactions.append(transaction)
+                    
+                except Exception as e:
+                    logger.error(f"Error processing transaction {idx}: {str(e)}")
+                    logger.error(f"test_indices length: {len(test_indices)}, flagged_indices: {flagged_indices}")
+                    logger.error(f"X_test.index: {X_test.index}")
+                    continue
+            
+            # Debug: Log what we're actually sending
+            if flagged_transactions:
+                logger.info(f"First flagged transaction keys: {list(flagged_transactions[0].keys())}")
+                logger.info(f"Sample transaction data: {flagged_transactions[0]}")
+            
+            logger.info(f"Total predicted frauds (flagged): {len(flagged_transactions)}")
+            logger.info(f"True Positives (correctly identified frauds): {tp}")
+            logger.error(f"False Positives (incorrectly flagged): {fp}")
+            logger.info(f"Analysis completed successfully!")
             
             logger.info(f"Total predicted frauds (flagged): {len(flagged_transactions)}")
             logger.info(f"True Positives (correctly identified frauds): {tp}")

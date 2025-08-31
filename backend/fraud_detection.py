@@ -295,3 +295,8 @@ if __name__ == "__main__":
 
     # Comparison of Performances
     display_all_confusion_matrices(y_test)
+
+    # Save to CSV
+   fraudulent_transactions.to_csv(r"C:\Users\adita\Downloads\predicted_frauds.csv", index=False)
+
+   print("Fraudulent transactions saved to predicted_frauds.csv")

@@ -98,24 +98,6 @@ const BatchAnalysis = () => {
           </div>
         )}
 
-        {/* Sample Size Input */}
-        <div className="mt-4 sm:mt-6">
-          <label htmlFor="sampleSize" className="block text-sm font-medium text-gray-700 mb-2">
-            Sample Size (Optional)
-          </label>
-          <input
-            type="number"
-            id="sampleSize"
-            value={sampleSize}
-            onChange={(e) => setSampleSize(e.target.value)}
-            placeholder="Leave empty for full dataset"
-            className="input-field"
-          />
-          <p className="text-xs sm:text-sm text-gray-500 mt-1">
-            Specify a number to analyze only a subset of the data for faster processing
-          </p>
-        </div>
-
         {/* Error Display */}
         {error && (
           <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-danger-50 border border-danger-200 rounded-lg">
@@ -196,7 +178,7 @@ const BatchAnalysis = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
-            <div className="p-3 sm:p-4 bg-gray-50 rounded-lg">
+            {/* <div className="p-3 sm:p-4 bg-gray-50 rounded-lg">
               <h3 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">Precision</h3>
               <p className="text-lg sm:text-2xl font-bold text-primary-600">
                 {((batchResults.statistics?.precision || 0) * 100).toFixed(2)}%
@@ -213,7 +195,7 @@ const BatchAnalysis = () => {
               <p className="text-lg sm:text-2xl font-bold text-primary-600">
                 {((batchResults.statistics?.f1Score || 0) * 100).toFixed(2)}%
               </p>
-            </div>
+            </div> */}
           </div>
 
           {/* Confusion Matrix Summary */}

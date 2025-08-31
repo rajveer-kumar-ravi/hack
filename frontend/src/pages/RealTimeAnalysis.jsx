@@ -6,34 +6,34 @@ const RealTimeAnalysis = () => {
   const { analyzeRealTimeTransaction, loading, error, realTimeResults, modelStatus } = useFraudDetection();
   const [formData, setFormData] = useState({
     Amount: '',
-    V1: '0',
-    V2: '0',
-    V3: '0',
-    V4: '0',
-    V5: '0',
-    V6: '0',
-    V7: '0',
-    V8: '0',
-    V9: '0',
-    V10: '0',
-    V11: '0',
-    V12: '0',
-    V13: '0',
-    V14: '0',
-    V15: '0',
-    V16: '0',
-    V17: '0',
-    V18: '0',
-    V19: '0',
-    V20: '0',
-    V21: '0',
-    V22: '0',
-    V23: '0',
-    V24: '0',
-    V25: '0',
-    V26: '0',
-    V27: '0',
-    V28: '0'
+    V1: '',
+    V2: '',
+    V3: '',
+    V4: '',
+    V5: '',
+    V6: '',
+    V7: '',
+    V8: '',
+    V9: '',
+    V10: '',
+    V11: '',
+    V12: '',
+    V13: '',
+    V14: '',
+    V15: '',
+    V16: '',
+    V17: '',
+    V18: '',
+    V19: '',
+    V20: '',
+    V21: '',
+    V22: '',
+    V23: '',
+    V24: '',
+    V25: '',
+    V26: '',
+    V27: '',
+    V28: ''
   });
 
   const handleInputChange = (e) => {
@@ -42,6 +42,20 @@ const RealTimeAnalysis = () => {
       ...prev,
       [name]: value
     }));
+  };
+
+  // Check if all required fields are filled
+  const isFormValid = () => {
+    // Amount is required and must be a valid number > 0
+    const amountValid = formData.Amount && !isNaN(parseFloat(formData.Amount)) && parseFloat(formData.Amount) > 0;
+    
+    // All V fields must have values (cannot be empty strings)
+    const vFieldsValid = Array.from({ length: 28 }, (_, i) => i + 1).every(num => {
+      const value = formData[`V${num}`];
+      return value !== '' && value !== null && value !== undefined;
+    });
+    
+    return amountValid && vFieldsValid;
   };
 
   const handleSubmit = async (e) => {
@@ -137,46 +151,90 @@ const RealTimeAnalysis = () => {
               <label htmlFor="Amount" className="block text-sm font-medium text-gray-700 mb-2">
                 Transaction Amount *
               </label>
-              <input
-                type="number"
-                id="Amount"
-                name="Amount"
-                value={formData.Amount}
-                onChange={handleInputChange}
-                required
-                step="0.01"
-                min="0"
-                className="input-field"
-                placeholder="Enter amount"
-              />
+                             <input
+                 type="number"
+                 id="Amount"
+                 name="Amount"
+                 value={formData.Amount}
+                 onChange={handleInputChange}
+                 required
+                 step="0.01"
+                 min="0"
+                 className={`input-field ${
+                   formData.Amount && !isNaN(parseFloat(formData.Amount)) && parseFloat(formData.Amount) > 0
+                     ? 'border-green-500 focus:border-green-500'
+                     : formData.Amount !== ''
+                     ? 'border-red-500 focus:border-red-500'
+                     : ''
+                 }`}
+                 placeholder="Enter amount"
+               />
+               {formData.Amount !== '' && (!formData.Amount || isNaN(parseFloat(formData.Amount)) || parseFloat(formData.Amount) <= 0) && (
+                 <p className="text-red-500 text-xs mt-1">Please enter a valid amount greater than 0</p>
+               )}
             </div>
 
-            {/* V1-V28 Features */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Feature Values (V1-V28)
-              </label>
-              <p className="text-xs text-gray-500 mb-3">
-                These are PCA-transformed features. For demo purposes, you can use default values or adjust them.
-              </p>
+                         {/* V1-V28 Features */}
+             <div>
+               <label className="block text-sm font-medium text-gray-700 mb-2">
+                 Feature Values (V1-V28) *
+               </label>
+               <p className="text-xs text-gray-500 mb-3">
+                 These are PCA-transformed features. <strong>All fields are required.</strong> You can use any numeric values including 0, but all fields must be filled.
+               </p>
               <div className="grid grid-cols-4 gap-2">
                 {Array.from({ length: 28 }, (_, i) => i + 1).map(num => (
                   <div key={num}>
                     <label htmlFor={`V${num}`} className="block text-xs text-gray-500 mb-1">
                       V{num}
                     </label>
-                    <input
-                      type="number"
-                      id={`V${num}`}
-                      name={`V${num}`}
-                      value={formData[`V${num}`]}
-                      onChange={handleInputChange}
-                      step="0.01"
-                      className="input-field text-xs py-1"
-                      placeholder="0"
-                    />
+                                         <input
+                       type="number"
+                       id={`V${num}`}
+                       name={`V${num}`}
+                       value={formData[`V${num}`]}
+                       onChange={handleInputChange}
+                       step="0.01"
+                       className={`input-field text-xs py-1 ${
+                         formData[`V${num}`] !== '' 
+                           ? 'border-green-500 focus:border-green-500' 
+                           : 'border-red-500 focus:border-red-500'
+                       }`}
+                       placeholder="Enter value"
+                       required
+                     />
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Form Validation Status */}
+            <div className={`p-3 sm:p-4 rounded-lg border ${
+              isFormValid() 
+                ? 'bg-green-50 border-green-200' 
+                : 'bg-yellow-50 border-yellow-200'
+            }`}>
+              <div className="flex items-center space-x-3">
+                {isFormValid() ? (
+                  <Shield className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 flex-shrink-0" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600 flex-shrink-0" />
+                )}
+                <div>
+                  <p className={`text-sm font-medium ${
+                    isFormValid() ? 'text-green-900' : 'text-yellow-900'
+                  }`}>
+                    {isFormValid() ? 'All fields are valid!' : 'Please fill in all required fields'}
+                  </p>
+                                     <p className={`text-xs ${
+                     isFormValid() ? 'text-green-700' : 'text-yellow-700'
+                   }`}>
+                     {isFormValid() 
+                       ? 'You can now analyze the transaction' 
+                       : `Transaction Amount is required and all V1-V28 fields must have values. Currently ${Array.from({ length: 28 }, (_, i) => i + 1).filter(num => !formData[`V${num}`] || formData[`V${num}`] === '').length} V fields are empty. Please fill in all fields to enable the Analyze Transaction button.`
+                     }
+                   </p>
+                </div>
               </div>
             </div>
 
@@ -193,9 +251,9 @@ const RealTimeAnalysis = () => {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading || modelStatus === 'idle'}
+              disabled={loading || modelStatus === 'idle' || !isFormValid()}
               className={`w-full py-3 px-4 rounded-lg font-medium transition-colors duration-200 ${
-                loading || modelStatus === 'idle'
+                loading || modelStatus === 'idle' || !isFormValid()
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'btn-primary'
               }`}
@@ -258,38 +316,6 @@ const RealTimeAnalysis = () => {
                 </p>
               </div>
 
-              {/* Recommendation */}
-              <div className="mb-4 sm:mb-6">
-                <h3 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">Recommendation</h3>
-                <p className="text-gray-700 bg-gray-50 p-3 rounded-lg text-sm sm:text-base">
-                  {realTimeResults.recommendation || getRecommendation(realTimeResults.fraud_probability)}
-                </p>
-              </div>
-
-              {/* Detailed Scores */}
-              <div className="space-y-3">
-                <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Detailed Analysis</h3>
-                <div className="grid grid-cols-1 gap-3">
-                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                    <span className="text-gray-700 text-sm sm:text-base">Supervised Score</span>
-                    <span className="font-semibold text-gray-900 text-sm sm:text-base">
-                      {(realTimeResults.supervised_score * 100).toFixed(2)}%
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                    <span className="text-gray-700 text-sm sm:text-base">Anomaly Score</span>
-                    <span className="font-semibold text-gray-900 text-sm sm:text-base">
-                      {(realTimeResults.anomaly_score * 100).toFixed(2)}%
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                    <span className="text-gray-700 text-sm sm:text-base">Combined Score</span>
-                    <span className="font-semibold text-gray-900 text-sm sm:text-base">
-                      {(realTimeResults.combined_score * 100).toFixed(2)}%
-                    </span>
-                  </div>
-                </div>
-              </div>
             </div>
           ) : (
             <div className="card">
