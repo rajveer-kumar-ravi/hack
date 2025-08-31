@@ -318,7 +318,7 @@ const BatchAnalysis = () => {
               </div>
               {batchResults.flaggedTransactions.length > 10 && (
                 <p className="text-xs sm:text-sm text-gray-500 mt-2 sm:mt-3">
-                  Showing first 10 of {batchResults.flaggedTransactions.length} flagged transactions
+                  Showing first 10 of {batchResults.totalFlagged || batchResults.flaggedTransactions.length} flagged transactions
                 </p>
               )}
             </div>

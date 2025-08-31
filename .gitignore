@@ -22,6 +22,7 @@ wheels/
 MANIFEST
 
 # Virtual Environment
+backend_env/
 venv/
 env/
 ENV/
