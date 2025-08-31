@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell } from 'recharts';
 import { Download, Eye, Filter, TrendingUp, AlertTriangle, CheckCircle, X, Calendar, DollarSign, User, Hash } from 'lucide-react';
 import { useFraudDetection } from '../context/FraudDetectionContext';
 
@@ -8,15 +8,18 @@ const Results = () => {
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const COLORS = ['#10B981', '#F59E0B', '#EF4444'];
-
   const prepareChartData = () => {
     if (!batchResults?.statistics) return [];
     
-    return [
-      { name: 'Legitimate', value: batchResults.statistics.legitimateTransactions, color: '#10B981' },
-      { name: 'Fraudulent', value: batchResults.statistics.fraudulentTransactions, color: '#EF4444' }
+    const legitimate = batchResults.statistics.legitimateTransactions;
+    const fraudulent = batchResults.statistics.fraudulentTransactions;
+    
+    const data = [
+      { name: 'Legitimate', value: legitimate, color: '#10B981' },
+      { name: 'Fraudulent', value: fraudulent, color: '#EF4444' }
     ];
+    
+    return data;
   };
 
   const prepareMetricsData = () => {
@@ -166,43 +169,44 @@ const Results = () => {
       {/* Charts */}
       {batchResults && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-          {/* Transaction Distribution */}
-          <div className="card">
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Transaction Distribution</h2>
-            <div className="flex justify-center">
-              <PieChart width={Math.min(400, window.innerWidth - 100)} height={300}>
-                <Pie
-                  data={prepareChartData()}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {prepareChartData().map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </div>
-          </div>
+                     {/* Transaction Distribution */}
+           <div className="card">
+             <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Transaction Distribution</h2>
+             <div className="flex justify-center p-4">
+               <PieChart width={Math.min(500, window.innerWidth - 80)} height={400}> {/* Increased width and height */}
+                 <Pie
+                   data={prepareChartData()}
+                   cx="50%"
+                   cy="50%"
+                   labelLine={false}
+                   label={{ position: 'outside', offset: 10, formatter: ({ name, percent }) => `${name} ${(percent * 100).toFixed(2)}%` }} // Explicitly set label position to outside with offset
+                   outerRadius={120} // Increased outer radius to make pie slightly larger, but with more chart space
+                   fill="#8884d8"
+                   dataKey="value"
+                   minAngle={3}
+                 >
+                   {prepareChartData().map((entry, index) => (
+                     <Cell key={`cell-${index}`} fill={entry.color} />
+                   ))}
+                 </Pie>
+                 <Tooltip />
+               </PieChart>
+             </div>
+           </div>
 
-          {/* Model Performance Metrics */}
-          <div className="card">
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Model Performance</h2>
-            <div className="flex justify-center">
-              <BarChart width={Math.min(400, window.innerWidth - 100)} height={300} data={prepareMetricsData()}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="value" fill="#3B82F6" />
-              </BarChart>
-            </div>
-          </div>
+                     {/* Model Performance Metrics */}
+           <div className="card">
+             <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Model Performance</h2>
+             <div className="flex justify-center p-4">
+               <BarChart width={Math.min(500, window.innerWidth - 80)} height={400} data={prepareMetricsData()}>
+                 <CartesianGrid strokeDasharray="3 3" />
+                 <XAxis dataKey="name" />
+                 <YAxis />
+                 <Tooltip />
+                 <Bar dataKey="value" fill="#3B82F6" />
+               </BarChart>
+             </div>
+           </div>
         </div>
       )}
 
@@ -285,12 +289,12 @@ const Results = () => {
         <div className="card">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 space-y-2 sm:space-y-0">
             <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Flagged Transactions</h2>
-            <div className="flex items-center space-x-2">
-              <Filter className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
-              <span className="text-xs sm:text-sm text-gray-600">
-                {batchResults.flaggedTransactions.length} transactions
-              </span>
-            </div>
+                         <div className="flex items-center space-x-2">
+               <Filter className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+               <span className="text-xs sm:text-sm text-gray-600">
+                 {batchResults.totalFlagged || batchResults.flaggedTransactions.length} transactions
+               </span>
+             </div>
           </div>
           
           <div className="overflow-x-auto">

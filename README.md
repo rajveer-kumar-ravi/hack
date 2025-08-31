@@ -50,7 +50,7 @@ npm start
 
 ## 🔧 Dataset Requirements
 
-The system is configured for the **credit card dataset** (`creditcard.csv`) with:
+The system is configured for the **credit card dataset** (`FraudDetectionDataset.csv`) with:
 - **Features**: V1, V2, V3, ..., V28, Amount
 - **Target**: Class (0 = Legitimate, 1 = Fraudulent)
 - **Format**: CSV file
@@ -96,7 +96,7 @@ hack/
 │   │   └── App.jsx          # Main application component
 │   └── package.json
 ├── dataset/
-│   └── creditcard.csv       # Sample dataset
+│   └── cFraudDetectionDataset.csv       # Sample dataset
 ├── start_app.sh             # Startup script
 └── README.md
 ```
@@ -104,7 +104,7 @@ hack/
 ## 🔍 Testing the System
 
 1. **Access the Frontend**: http://localhost:3000
-2. **Upload Dataset**: Use the batch analysis feature with `creditcard.csv`
+2. **Upload Dataset**: Use the batch analysis feature with `FraudDetectionDataset.csv`
 3. **View Results**: Check the results page for comprehensive analysis
 4. **Real-Time Analysis**: Test individual transaction analysis
 

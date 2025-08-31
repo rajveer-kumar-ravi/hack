@@ -24,6 +24,18 @@ import logging
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 
+# Set up detailed logging for our application
+import logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('fraud_detection.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
 # Global variables to store models and results
 models = {
     'supervised_model': None,
@@ -147,23 +159,49 @@ def batch_analysis():
         file.save(tmp_path)
         
         # Run the fraud detection pipeline using your notebook code
-        print(f"Starting batch analysis for file: {original_filename}")
+        logger.info(f"Starting batch analysis for file: {original_filename}")
         
         try:
             # Load and process the data using your notebook functions
             df = pd.read_csv(tmp_path)
             
+            # Display dataset info
+            logger.info("Dataset Info:")
+            logger.info(f"Dataset Shape: {df.shape}")
+            logger.info(f"Dataset Columns: {list(df.columns)}")
+            logger.info(f"Dataset Types: {df.dtypes.to_dict()}")
+            
+            # Display initial transaction counts
+            if TARGET_COL in df.columns:
+                non_fraudulent_count = df[TARGET_COL].value_counts()[0]
+                fraudulent_count = df[TARGET_COL].value_counts()[1]
+                logger.info(f"Initial Transaction Distribution:")
+                logger.info(f"Number of normal transactions = {non_fraudulent_count} (% {non_fraudulent_count/len(df)*100})")
+                logger.info(f"Number of fraudulent transactions = {fraudulent_count} (% {fraudulent_count/len(df)*100})")
+            
             # Clean duplicates
             df.drop_duplicates(inplace=True)
+            logger.info(f"After removing duplicates: {df.shape}")
+            
+            # Display transaction counts after cleaning
+            if TARGET_COL in df.columns:
+                non_fraudulent_count = df[TARGET_COL].value_counts()[0]
+                fraudulent_count = df[TARGET_COL].value_counts()[1]
+                logger.info(f"After Cleaning:")
+                logger.info(f"Number of normal transactions = {non_fraudulent_count} (% {non_fraudulent_count/len(df)*100})")
+                logger.info(f"Number of fraudulent transactions = {fraudulent_count} (% {fraudulent_count/len(df)*100})")
             
             # Feature selection based on correlation with target
             if TARGET_COL in df.columns:
+                logger.info(f"Feature Selection:")
                 selected_features = df.corr()[TARGET_COL][:-1].abs().sort_values().tail(14)
                 df_selected = selected_features.to_frame().reset_index()
                 selected_features = df_selected['index']
+                logger.info(f"Selected {len(selected_features)} features: {list(selected_features)}")
                 
                 # Scale amount column if it exists
                 if 'Amount' in df.columns:
+                    logger.info("Scaling Amount column...")
                     amount = df['Amount'].values.reshape(-1, 1)
                     from sklearn.preprocessing import StandardScaler
                     scaler = StandardScaler()
@@ -172,47 +210,82 @@ def batch_analysis():
                 
                 X = df[selected_features]
                 y = df[TARGET_COL]
+                logger.info(f"Feature matrix shape: {X.shape}")
+                logger.info(f"Target vector shape: {y.shape}")
             else:
                 X = df.drop(columns=[TARGET_COL])
                 y = df[TARGET_COL]
             
             # Split data
             from sklearn.model_selection import train_test_split
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=85, stratify=y)
+            logger.info(f"Data Split:")
+            logger.info(f"Training set: {X_train.shape}")
+            logger.info(f"Test set: {X_test.shape}")
+            logger.info(f"Training labels: {y_train.value_counts().to_dict()}")
+            logger.info(f"Test labels: {y_test.value_counts().to_dict()}")
             
             # Apply balancing techniques
-            print("Applying Random OverSampler...")
-            X_train_ros, y_train_ros = fraud_detection.balancedWithRandomOverSampler(X_train, y_train)
-            
-            print("Applying SMOTE...")
+            logger.info("Applying SMOTE...")
             X_train_smote, y_train_smote = fraud_detection.balanceWithSMOTE(X_train, y_train)
+            logger.info(f"After SMOTE - Training set: {X_train_smote.shape}")
+            logger.info(f"After SMOTE - Training labels: {y_train_smote.value_counts().to_dict()}")
             
             # Train models
-            print("Training LightGBM model...")
+            logger.info("Training LightGBM model...")
             import lightgbm as lgb
-            model = lgb.LGBMClassifier(random_state=42, n_estimators=100, verbose=-1)
-            model.fit(X_train_ros, y_train_ros)
+            model = lgb.LGBMClassifier()  # Using default parameters like in original notebook
+            logger.info(f"Model parameters: {model.get_params()}")
+            model.fit(X_train_smote, y_train_smote)
+            logger.info("LightGBM training completed!")
             
             # Get predictions
+            logger.info("Making predictions...")
             y_pred = model.predict(X_test)
             y_prob = model.predict_proba(X_test)[:, 1]
+            logger.info(f"Predictions shape: {y_pred.shape}")
+            logger.info(f"Prediction distribution: {np.bincount(y_pred)}")
             
             # Calculate statistics
-            from sklearn.metrics import accuracy_score, precision_recall_fscore_support, confusion_matrix
+            from sklearn.metrics import accuracy_score, precision_recall_fscore_support, confusion_matrix, roc_auc_score
             accuracy = accuracy_score(y_test, y_pred)
             precision, recall, f1, _ = precision_recall_fscore_support(y_test, y_pred, average='binary', zero_division=0)
+            auc = roc_auc_score(y_test, y_pred)
             
             # Confusion matrix
             tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
+            
+            logger.info(f"Model Performance:")
+            logger.info(f"Accuracy: {accuracy:.4f}")
+            logger.info(f"Precision: {precision:.4f}")
+            logger.info(f"Recall: {recall:.4f}")
+            logger.info(f"F1-Score: {f1:.4f}")
+            logger.info(f"AUC: {auc:.4f}")
+            logger.info(f"Confusion Matrix:")
+            logger.info(f"  True Negatives: {tn}")
+            logger.info(f"  False Positives: {fp}")
+            logger.info(f"  False Negatives: {fn}")
+            logger.info(f"  True Positives: {tp}")
+            
+            # Get actual test set distribution
+            actual_fraudulent = int(sum(y_test))
+            actual_legitimate = int(len(y_test) - sum(y_test))
+            
+            logger.info(f"Test Set Distribution:")
+            logger.info(f"  Actual Fraudulent: {actual_fraudulent}")
+            logger.info(f"  Actual Legitimate: {actual_legitimate}")
+            logger.info(f"  Predicted Fraudulent: {int(sum(y_pred))}")
+            logger.info(f"  Predicted Legitimate: {int(len(y_test) - sum(y_pred))}")
             
             statistics = {
                 'accuracy': float(accuracy),
                 'precision': float(precision),
                 'recall': float(recall),
                 'f1Score': float(f1),
+                'auc': float(auc),
                 'totalTransactions': int(len(y_test)),
-                'fraudulentTransactions': int(sum(y_pred)),
-                'legitimateTransactions': int(len(y_test) - sum(y_pred)),
+                'fraudulentTransactions': actual_fraudulent,  # Actual frauds in test set
+                'legitimateTransactions': actual_legitimate,  # Actual legitimate in test set
                 'truePositives': int(tp),
                 'falsePositives': int(fp),
                 'trueNegatives': int(tn),
@@ -220,17 +293,23 @@ def batch_analysis():
             }
             
             # Prepare flagged transactions
+            logger.info(f"Preparing flagged transactions...")
             flagged_indices = np.where(y_pred == 1)[0]
             flagged_transactions = []
             
             for idx in flagged_indices:
-                tx_data = df.iloc[idx]
+                tx_data = X_test.iloc[idx]
                 flagged_transactions.append({
                     'Transaction_ID': f'TX_{idx}',
                     'User_ID': f'USER_{idx}',
-                    'Transaction_Amount': float(tx_data.get('Amount', 0)),
+                    'Transaction_Amount': float(tx_data.get('Amount', 0)) if 'Amount' in tx_data else 0.0,
                     'suspicion_score': float(y_prob[idx])
                 })
+            
+            logger.info(f"Total predicted frauds (flagged): {len(flagged_transactions)}")
+            logger.info(f"True Positives (correctly identified frauds): {tp}")
+            logger.info(f"False Positives (incorrectly flagged): {fp}")
+            logger.info(f"Analysis completed successfully!")
             
             # Store model for real-time analysis
             models['supervised_model'] = model
@@ -240,7 +319,7 @@ def batch_analysis():
                 'success': True,
                 'statistics': statistics,
                 'flaggedTransactions': flagged_transactions,
-                'totalFlagged': len(flagged_transactions),
+                'totalFlagged': int(tp),  # Show only true positives (correctly identified frauds)
                 'analysisTimestamp': datetime.now().isoformat(),
                 'fileName': original_filename
             })
@@ -304,22 +383,7 @@ def real_time_analysis():
         # Supervised probability
         sup_prob = models['supervised_model'].predict_proba(X)[:, 1] if hasattr(models['supervised_model'], "predict_proba") else models['supervised_model'].predict(X)
         
-        # Unsupervised path: add sup_prob and scale with the fitted scaler
-        X_unsup = X.copy()
-        X_unsup['sup_prob'] = sup_prob
-        if models.get('scaler') is not None:
-            X_scaled = models['scaler'].transform(X_unsup)
-        else:
-            X_scaled = X_unsup.values
-        raw_unsup = -models['isolation_model'].decision_function(X_scaled)
-        unsup_score = (raw_unsup - raw_unsup.min()) / (raw_unsup.max() - raw_unsup.min() + 1e-9)
-        
-        # Normalize sup prob for combination
-        sp = (sup_prob - sup_prob.min()) / (sup_prob.max() - sup_prob.min() + 1e-9)
-        alpha = models['threshold_config']['alpha']
-        combined_score = alpha * sp + (1 - alpha) * unsup_score
-        
-        fraud_probability = float(combined_score[0])
+        fraud_probability = float(sup_prob[0])
         if fraud_probability >= 0.8:
             risk_level = 'high'
             recommendation = 'Block transaction immediately'
@@ -337,8 +401,6 @@ def real_time_analysis():
             'risk_level': risk_level,
             'recommendation': recommendation,
             'supervised_score': float(sup_prob[0]),
-            'anomaly_score': float(unsup_score[0]),
-            'combined_score': float(combined_score[0]),
             'analysisTimestamp': datetime.now().isoformat()
         })
         

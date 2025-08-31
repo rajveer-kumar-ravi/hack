@@ -22,21 +22,12 @@ import warnings
 warnings.filterwarnings("ignore")
 
 # for balancing dataset
-from imblearn.over_sampling import RandomOverSampler
 from imblearn.over_sampling import SMOTE
 
 
 def displayValues(y_train):
     print('Non-Frauds:', y_train.value_counts()[0], '/', round(y_train.value_counts()[0]/len(y_train) * 100,2), '% of the dataset')
     print('Frauds:', y_train.value_counts()[1], '/',round(y_train.value_counts()[1]/len(y_train) * 100,2), '% of the dataset')
-
-def balancedWithRandomOverSampler(X_train, y_train):
-    ros = RandomOverSampler(random_state=50)
-    X_train_ros, y_train_ros = ros.fit_resample(X_train, y_train)
-    
-    displayValues(y_train_ros)
-    
-    return X_train_ros, y_train_ros
 
 
 def balanceWithSMOTE(X_train, y_train):
@@ -120,7 +111,10 @@ def display_all_confusion_matrices(y_test):
         if i != 0:
             disp.ax_.set_ylabel('')
 
-    # f.text(0.4, 0.1, 'Predicted label', ha='left')
+
+    for j in range(total_models, len(ax)):
+        ax[j].set_visible(False)
+
     plt.subplots_adjust()
     f.colorbar(disp.im_)
     plt.show()
@@ -189,6 +183,7 @@ def find_interquartile_range(df, column_name):
         
     return lower_limit, upper_limit
 
+
 def separate_outliers(df, column_name):
     try:
         lower_limit, upper_limit = find_interquartile_range(df, column_name)
@@ -212,10 +207,10 @@ def separate_outliers(df, column_name):
         pass
 
 
-# Main execution code (this will run when the file is imported)
-def main():
+# Only run the analysis when this file is executed directly, not when imported
+if __name__ == "__main__":
     # "Importing the Dataset" 
-    data = pd.read_csv('../dataset/creditcard.csv')
+    data = pd.read_csv('/home/harshita/Harshita/hack/dataset/FraudDetectionDataset.csv')
     data.head()
 
     df = data.copy()
@@ -241,7 +236,6 @@ def main():
     numeric_columns = (list(df.loc[:, 'V1':'Amount']))
 
     boxplots_custom(dataset=df, columns_list=numeric_columns, rows=10, cols=3, suptitle='')
-    plt.tight_layout()
 
     # Call function
     plot_histograms(df, numeric_columns)
@@ -257,7 +251,6 @@ def main():
     df["Class"].unique()
 
     # Feature Selection
-
     plt.figure(figsize=(15,8))
     d = df.corr()['Class'][:-1].abs().sort_values().plot(kind='bar', title='Most important features')
 
@@ -282,12 +275,6 @@ def main():
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size = 0.3, random_state = 85)
 
-    ### Random Oversampling
-
-    # Data augmentation through sampling may cause overfitting.
-    # balancedWithRandomOverSampler:  it is a funcion
-    X_train_ros, y_train_ros = balancedWithRandomOverSampler(X_train,y_train)
-
     ### SMOTE
 
     # SMOTE (Synthetic Minority Oversampling Technique) synthesizes samples for the minority class. 
@@ -302,227 +289,9 @@ def main():
                  
 
     for i in ml_models:
-        model_performance(i, X_train_ros, X_test, y_train_ros, y_test, "RandomOverSampler")
         model_performance(i, X_train_smote, X_test, y_train_smote, y_test, "SMOTE")
 
     all_performances.sort_values(by=['f1_score','AUC'], ascending=False)
 
     # Comparison of Performances
-
     display_all_confusion_matrices(y_test)
-
-if __name__ == "__main__":
-    main()
-
-# Flask compatibility functions
-def load_df(file_path, target_col='Class', sample_n=None, id_cols=None):
-    """Load and prepare dataframe for analysis."""
-    try:
-        df = pd.read_csv(file_path)
-        
-        # Sample if requested
-        if sample_n and sample_n < len(df):
-            df = df.sample(n=sample_n, random_state=42).reset_index(drop=True)
-        
-        # Ensure target column exists
-        if target_col not in df.columns:
-            # Try to find similar column names
-            possible_targets = [col for col in df.columns if 'fraud' in col.lower() or 'class' in col.lower()]
-            if possible_targets:
-                target_col = possible_targets[0]
-            else:
-                # Create a dummy target column for demonstration
-                df[target_col] = np.random.choice([0, 1], size=len(df), p=[0.95, 0.05])
-        
-        return df, target_col
-    except Exception as e:
-        print(f"Error loading dataframe: {e}")
-        return None, None
-
-def preprocess_for_models(df, target_col, id_cols=None):
-    """Preprocess dataframe for model training."""
-    try:
-        # Remove ID columns if specified
-        if id_cols:
-            df = df.drop(columns=[col for col in id_cols if col in df.columns])
-        
-        # Clean duplicates
-        df.drop_duplicates(inplace=True)
-        
-        # Feature selection based on correlation with target
-        if target_col in df.columns:
-            selected_features = df.corr()[target_col][:-1].abs().sort_values().tail(14)
-            df_selected = selected_features.to_frame().reset_index()
-            selected_features = df_selected['index']
-            
-            # Scale amount column if it exists
-            if 'Amount' in df.columns:
-                amount = df['Amount'].values.reshape(-1, 1)
-                scaler = StandardScaler()
-                amount_scaled = scaler.fit_transform(amount)
-                df['Amount'] = amount_scaled
-            
-            X = df[selected_features]
-            y = df[target_col]
-        else:
-            X = df.drop(columns=[target_col])
-            y = df[target_col]
-        
-        return X, y, None, None, X.columns.tolist()
-    except Exception as e:
-        print(f"Error preprocessing data: {e}")
-        return None, None, None, None, None
-
-def supervised_scores(X_train, X_test, y_train, y_test):
-    """Train supervised model and return scores."""
-    try:
-        # Use LightGBM as the supervised model
-        model = lgb.LGBMClassifier(random_state=42, n_estimators=100, verbose=-1)
-        model.fit(X_train, y_train)
-        
-        # Get predictions and probabilities
-        y_pred = model.predict(X_test)
-        y_prob = model.predict_proba(X_test)[:, 1]
-        
-        return model, y_pred, y_prob
-    except Exception as e:
-        print(f"Error in supervised training: {e}")
-        return None, None, None
-
-def unsupervised_scores(X_train, X_test, y_train, y_test):
-    """Train unsupervised model and return scores."""
-    try:
-        # Use Isolation Forest for anomaly detection
-        from sklearn.ensemble import IsolationForest
-        model = IsolationForest(random_state=42, contamination=0.1)
-        model.fit(X_train)
-        
-        # Get anomaly scores (negative values indicate anomalies)
-        scores = -model.decision_function(X_test)
-        
-        # Normalize scores to 0-1 range
-        scores = (scores - scores.min()) / (scores.max() - scores.min() + 1e-9)
-        
-        return model, scores
-    except Exception as e:
-        print(f"Error in unsupervised training: {e}")
-        return None, None
-
-def tune_threshold_and_eval(y_true, sup_prob, unsup_score, alpha_range=np.arange(0.1, 1.0, 0.1)):
-    """Tune the combination parameter alpha and evaluate."""
-    best_alpha = 0.5
-    best_f1 = 0
-    
-    for alpha in alpha_range:
-        combined_score = alpha * sup_prob + (1 - alpha) * unsup_score
-        threshold = np.percentile(combined_score, 90)  # Use 90th percentile as threshold
-        y_pred = (combined_score >= threshold).astype(int)
-        
-        f1 = mt.f1_score(y_true, y_pred, zero_division=0)
-        if f1 > best_f1:
-            best_f1 = f1
-            best_alpha = alpha
-    
-    # Get best predictions
-    best_combined = best_alpha * sup_prob + (1 - best_alpha) * unsup_score
-    best_threshold = np.percentile(best_combined, 90)
-    best_pred = (best_combined >= best_threshold).astype(int)
-    
-    return {
-        'alpha': best_alpha,
-        'threshold': best_threshold,
-        'pred': best_pred,
-        'combined': best_combined,
-        'f1_score': best_f1
-    }
-
-def gnn_baseline_flagging(df, target_col):
-    """Simple baseline flagging using basic heuristics."""
-    # This is a placeholder for GNN-based flagging
-    # For now, we'll use a simple rule-based approach
-    flags = np.zeros(len(df))
-    
-    # Flag high amount transactions
-    amount_col = [col for col in df.columns if 'amount' in col.lower()]
-    if amount_col:
-        amount_threshold = df[amount_col[0]].quantile(0.95)
-        flags[df[amount_col[0]] > amount_threshold] = 1
-    
-    return flags
-
-def run_chained_pipeline(file_path, target_col='Class', sample_n=None, id_cols=None):
-    """Run the complete fraud detection pipeline."""
-    try:
-        print("Loading data...")
-        # Load data
-        df, target_col = load_df(file_path, target_col, sample_n, id_cols)
-        if df is None:
-            return None
-        
-        print("Preprocessing data...")
-        # Preprocess
-        X, y, encoders, scaler, feature_columns = preprocess_for_models(df, target_col, id_cols)
-        if X is None:
-            return None
-        
-        print("Splitting data...")
-        # Split data
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
-        
-        # Apply balancing techniques
-        print("Applying Random OverSampler...")
-        X_train_ros, y_train_ros = balancedWithRandomOverSampler(X_train, y_train)
-        
-        print("Applying SMOTE...")
-        X_train_smote, y_train_smote = balanceWithSMOTE(X_train, y_train)
-        
-        print("Training supervised model with Random OverSampler...")
-        # Train supervised model with Random OverSampler
-        sup_model_ros, sup_pred_ros, sup_prob_ros = supervised_scores(X_train_ros, X_test, y_train_ros, y_test)
-        if sup_model_ros is None:
-            return None
-        
-        print("Training supervised model with SMOTE...")
-        # Train supervised model with SMOTE
-        sup_model_smote, sup_pred_smote, sup_prob_smote = supervised_scores(X_train_smote, X_test, y_train_smote, y_test)
-        if sup_model_smote is None:
-            return None
-        
-        print("Training unsupervised model...")
-        # Train unsupervised model
-        iso_model, unsup_score = unsupervised_scores(X_train, X_test, y_train, y_test)
-        if iso_model is None:
-            return None
-        
-        print("Tuning model combination...")
-        # Combine models (using Random OverSampler results as primary)
-        best_config = tune_threshold_and_eval(y_test, sup_prob_ros, unsup_score)
-        
-        print("Running baseline flagging...")
-        # GNN baseline (placeholder)
-        gnn_flags = gnn_baseline_flagging(df, target_col)
-        
-        print("Pipeline completed successfully!")
-        return {
-            'df': df,
-            'y': y_test,
-            'sup_model': sup_model_ros,  # Use Random OverSampler model as primary
-            'sup_model_smote': sup_model_smote,  # Keep SMOTE model for comparison
-            'iso_model': iso_model,
-            'encoders': encoders,
-            'scaler': scaler,
-            'feature_columns': feature_columns,
-            'sup_prob': sup_prob_ros,  # Use Random OverSampler probabilities
-            'sup_prob_smote': sup_prob_smote,  # Keep SMOTE probabilities for comparison
-            'unsup_score': unsup_score,
-            'best': best_config,
-            'gnn_flags': gnn_flags,
-            'X_train_ros': X_train_ros,
-            'y_train_ros': y_train_ros,
-            'X_train_smote': X_train_smote,
-            'y_train_smote': y_train_smote
-        }
-        
-    except Exception as e:
-        print(f"Error in pipeline: {e}")
-        return None
