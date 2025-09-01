@@ -1,8 +1,10 @@
 services:
   - type: web
-    name: flask-backend
+    name: fraud-detection-backend
     env: python
     plan: free
-    buildCommand: pip install --upgrade pip setuptools wheel build && pip install -r requirements.txt
-    startCommand: gunicorn main:app --bind 0.0.0.0:$PORT
+    buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers=4 --bind=0.0.0.0:$PORT
+    runtime: python-3.10.14
+
 
