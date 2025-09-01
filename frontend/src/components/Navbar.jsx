@@ -43,7 +43,7 @@ const Navbar = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2" onClick={closeMobileMenu}>
             <Shield className="h-6 w-6 sm:h-8 sm:w-8 text-primary-600" />
-            <span className="text-lg sm:text-xl font-bold text-gradient">FraudGuard</span>
+            <span className="text-lg sm:text-xl font-bold text-gradient">FraudLens</span>
           </Link>
 
           {/* Desktop Navigation Links */}

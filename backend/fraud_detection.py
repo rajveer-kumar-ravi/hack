@@ -207,96 +207,116 @@ def separate_outliers(df, column_name):
         pass
 
 
-# Only run the analysis when this file is executed directly, not when imported
-if __name__ == "__main__":
-    # "Importing the Dataset" 
-    data = pd.read_csv('/home/harshita/Harshita/hack/dataset/FraudDetectionDataset.csv')
-    data.head()
-
-    df = data.copy()
-
-    df.info() #We don't have any null values
-
+def run_fraud_detection_analysis(data_path=None, df=None):
+    """
+    Run the complete fraud detection analysis pipeline.
+    
+    Args:
+        data_path (str): Path to the CSV file (optional if df is provided)
+        df (DataFrame): DataFrame to analyze (optional if data_path is provided)
+    
+    Returns:
+        dict: Dictionary containing analysis results including fraudulent transactions
+    """
+    # Load data
+    if df is None and data_path is not None:
+        data = pd.read_csv(data_path)
+        df = data.copy()
+    elif df is None:
+        raise ValueError("Either data_path or df must be provided")
+    
+    # Basic data info
+    df.info()
     df.describe().T
-
-    # Our dataset is quite unbalanced
+    
+    # Show initial distribution
     show_graphs(df)
-
+    
     non_fradulent_count = df['Class'].value_counts()[0]
     fradulent_count = df['Class'].value_counts()[1]
-
+    
     print(f"Number of normal transactions = {non_fradulent_count} (% {non_fradulent_count/len(df)*100})")
     print(f"Number of fraudulent transactions = {fradulent_count} (% {fradulent_count/len(df)*100})")
-
+    
+    # Correlation heatmap
     plt.figure(figsize = (40,20))
-    sns.heatmap(df.corr(), cmap="magma_r", annot=True);
-
-    df.drop_duplicates(inplace=True)   #We cleaned the duplicate data
-
+    sns.heatmap(df.corr(), cmap="magma_r", annot=True)
+    
+    # Clean duplicates
+    df.drop_duplicates(inplace=True)
+    
+    # Feature analysis
     numeric_columns = (list(df.loc[:, 'V1':'Amount']))
-
     boxplots_custom(dataset=df, columns_list=numeric_columns, rows=10, cols=3, suptitle='')
-
-    # Call function
     plot_histograms(df, numeric_columns)
-
+    
+    # Show distribution after cleaning
     show_graphs(df)
-
+    
     non_fraudulent_count = df['Class'].value_counts()[0]
     fraudulent_count = df['Class'].value_counts()[1]
-
+    
     print(f"Number of normal transactions = {non_fraudulent_count} (% {non_fraudulent_count/len(df)*100})")
     print(f"Number of fraudulent transactions = {fraudulent_count} (% {fraudulent_count/len(df)*100})")
-
-    df["Class"].unique()
-
+    
     # Feature Selection
     plt.figure(figsize=(15,8))
     d = df.corr()['Class'][:-1].abs().sort_values().plot(kind='bar', title='Most important features')
-
     plt.show()
-
-    #selected_features = (df.corr()['Class'][:-1].abs() > 0.15)
+    
     selected_features = df.corr()['Class'][:-1].abs().sort_values().tail(14)
     df_selected= selected_features.to_frame().reset_index()
     selected_featues = df_selected['index']
-
+    
+    # Visualization
     sns.jointplot(x='V11', y='V3',hue='Class', data=df, palette = 'dark')
-
+    
+    # Scale amount
     amount = df['Amount'].values.reshape(-1, 1)
-
     scaler = StandardScaler()
     amount_scaled = scaler.fit_transform(amount)
-
     df['Amount'] = amount_scaled
-
+    
+    # Prepare features and target
     X = df[selected_featues]
     y = df['Class']
-
+    
+    # Split data
     X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size = 0.3, random_state = 85)
-
-    ### SMOTE
-
-    # SMOTE (Synthetic Minority Oversampling Technique) synthesizes samples for the minority class. 
-    # SMOTE works by selecting samples that are close in the feature space, drawing a line between them, 
-    # and generating a new sample at a point along that line.
-
+    
+    # Apply SMOTE
     X_train_smote, y_train_smote = balanceWithSMOTE(X_train, y_train)
-
-    # Model Building and Training
-
-    ml_models = [ lgb.LGBMClassifier()] 
-                 
-
+    
+    # Train models
+    ml_models = [lgb.LGBMClassifier()]
+    
     for i in ml_models:
         model_performance(i, X_train_smote, X_test, y_train_smote, y_test, "SMOTE")
-
+    
     all_performances.sort_values(by=['f1_score','AUC'], ascending=False)
-
-    # Comparison of Performances
+    
+    # Display confusion matrices
     display_all_confusion_matrices(y_test)
+    
+    # Get fraudulent transactions
+    # This would need to be implemented based on your specific requirements
+    # For now, returning a placeholder
+    fraudulent_transactions = df[y_test == 1]  # This is a placeholder - you'll need to adjust based on your actual logic
+    
+    return {
+        'fraudulent_transactions': fraudulent_transactions,
+        'model_performances': all_performances,
+        'selected_features': selected_featues.tolist(),
+        'data_shape': df.shape
+    }
 
-    # Save to CSV
-   fraudulent_transactions.to_csv(r"C:\Users\adita\Downloads\predicted_frauds.csv", index=False)
-
-   print("Fraudulent transactions saved to predicted_frauds.csv")
+# Only run the analysis when this file is executed directly, not when imported
+if __name__ == "__main__":
+    # Example usage with default dataset
+    data_path = '/home/harshita/Harshita/hack/dataset/FraudDetectionDataset.csv'
+    results = run_fraud_detection_analysis(data_path=data_path)
+    
+    # Save to CSV (for standalone execution)
+    if results['fraudulent_transactions'] is not None:
+        results['fraudulent_transactions'].to_csv("predicted_frauds.csv", index=False)
+        print("Fraudulent transactions saved to predicted_frauds.csv")

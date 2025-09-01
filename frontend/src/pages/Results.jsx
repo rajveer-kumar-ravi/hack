@@ -7,6 +7,7 @@ const Results = () => {
   const { batchResults, realTimeResults } = useFraudDetection();
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const prepareChartData = () => {
     if (!batchResults?.statistics) return [];
@@ -44,53 +45,48 @@ const Results = () => {
     ];
   };
 
-  const exportResults = () => {
+  const exportResults = async () => {
     if (!batchResults?.flaggedTransactions) return;
     
-    // Debug: Log what we're receiving
-    console.log('Exporting flagged transactions:', batchResults.flaggedTransactions);
-    console.log('First transaction keys:', Object.keys(batchResults.flaggedTransactions[0]));
-    console.log('First transaction sample:', batchResults.flaggedTransactions[0]);
+    setIsExporting(true);
     
-    // Get all unique column names from the flagged transactions
-    const allColumns = new Set();
-    batchResults.flaggedTransactions.forEach(tx => {
-      Object.keys(tx).forEach(key => allColumns.add(key));
-    });
-    
-    // Convert to array and sort for consistent ordering
-    const columns = Array.from(allColumns).sort();
-    
-    console.log('All columns found:', columns);
-    
-    // Create CSV header
-    const csvHeader = columns.join(',');
-    
-    // Create CSV rows
-    const csvRows = batchResults.flaggedTransactions.map(tx => {
-      return columns.map(col => {
-        const value = tx[col];
-        // Handle different data types and escape commas
-        if (value === null || value === undefined) return '';
-        if (typeof value === 'string' && value.includes(',')) {
-          return `"${value}"`; // Quote strings with commas
-        }
-        return value;
-      }).join(',');
-    });
-    
-    // Combine header and rows
-    const csvContent = "data:text/csv;charset=utf-8," + csvHeader + '\n' + csvRows.join('\n');
-    
-    console.log('CSV content preview:', csvContent.substring(0, 500));
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "fraudulent_transactions_detected.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      // Call the backend API to export the CSV
+      const response = await fetch('http://localhost:5000/api/export-fraudulent-transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          flaggedTransactions: batchResults.flaggedTransactions
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Export failed: ${response.statusText}`);
+      }
+      
+      // Get the blob from the response
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'fraudulent_transactions_detected.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      console.log('CSV exported successfully');
+      alert('CSV exported successfully! The file has been downloaded.');
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      alert('Failed to export CSV. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleViewTransaction = (transaction) => {
@@ -191,11 +187,17 @@ const Results = () => {
          {batchResults?.flaggedTransactions && batchResults.flaggedTransactions.length > 0 && (
            <button
              onClick={exportResults}
-             className="btn-primary flex items-center space-x-2"
+             disabled={isExporting}
+             className={`btn-primary flex items-center space-x-2 ${isExporting ? 'opacity-50 cursor-not-allowed' : ''}`}
              title="Export all fraudulent transactions with complete dataset columns"
            >
              <Download className="h-4 w-4" />
-             <span>Export Fraudulent Transactions (CSV)</span>
+             <span>
+               {isExporting 
+                 ? 'Exporting...' 
+                 : `Export Fraudulent Transactions (${batchResults.flaggedTransactions.length} records)`
+               }
+             </span>
            </button>
          )}
        </div>

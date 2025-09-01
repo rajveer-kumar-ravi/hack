@@ -9,6 +9,9 @@ from werkzeug.utils import secure_filename
 import pickle
 from datetime import datetime
 import time
+import threading
+import random
+import uuid
 
 # Import the fraud detection functions from the notebook code
 import fraud_detection
@@ -50,6 +53,12 @@ models = {
 last_status_check = 0
 STATUS_CHECK_COOLDOWN = int(os.environ.get('STATUS_CHECK_COOLDOWN', '30'))  # seconds between status checks (default 30s)
 
+# Real-time simulation variables
+simulation_running = False
+simulation_thread = None
+simulation_transactions = []
+SIMULATION_FILE = 'realtime_transactions.json'
+
 # Configuration for credit card dataset
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'csv'}
@@ -61,6 +70,62 @@ if not os.path.exists(UPLOAD_FOLDER):
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def generate_dummy_transaction():
+    """Generate a dummy transaction with realistic credit card fraud dataset features."""
+    # Generate V1-V28 features (PCA transformed features in credit card dataset)
+    transaction = {}
+    
+    # Generate V1-V28 (PCA features) - normally distributed around 0
+    for i in range(1, 29):
+        transaction[f'V{i}'] = np.random.normal(0, 1)
+    
+    # Generate Time (seconds elapsed since first transaction)
+    transaction['Time'] = time.time()
+    
+    # Generate Amount (transaction amount) - log-normal distribution for realistic amounts
+    transaction['Amount'] = max(0.01, np.random.lognormal(3, 1.5))  # Mean around $20-50, some large amounts
+    
+    # Add transaction metadata
+    transaction['transaction_id'] = str(uuid.uuid4())
+    transaction['timestamp'] = datetime.now().isoformat()
+    
+    # Occasionally create suspicious patterns (higher fraud likelihood)
+    if random.random() < 0.15:  # 15% chance of suspicious pattern
+        # Large amount late at night
+        transaction['Amount'] = random.uniform(500, 2000)
+        transaction['V1'] = random.uniform(-3, -1)  # Suspicious pattern
+        transaction['V2'] = random.uniform(2, 4)
+        transaction['V3'] = random.uniform(-3, -1)
+    
+    return transaction
+
+def simulation_worker():
+    """Background worker that generates transactions every second."""
+    global simulation_running, simulation_transactions
+    
+    while simulation_running:
+        try:
+            # Generate new transaction
+            transaction = generate_dummy_transaction()
+            simulation_transactions.append(transaction)
+            
+            # Keep only last 1000 transactions to prevent memory issues
+            if len(simulation_transactions) > 1000:
+                simulation_transactions = simulation_transactions[-1000:]
+            
+            # Save to JSON file
+            with open(SIMULATION_FILE, 'w') as f:
+                json.dump(simulation_transactions, f, indent=2)
+            
+            logger.info(f"Generated transaction {len(simulation_transactions)}: Amount=${transaction['Amount']:.2f}")
+            
+            # Wait 1 second
+            time.sleep(1)
+            
+        except Exception as e:
+            logger.error(f"Error in simulation worker: {str(e)}")
+            break
 
 def calculate_statistics(y_true, y_pred, sup_prob, unsup_score, combined_score):
     """Calculate comprehensive statistics for the analysis results."""
@@ -101,7 +166,7 @@ def get_model_status():
     current_time = time.time()
     if current_time - last_status_check < STATUS_CHECK_COOLDOWN:
         # Return cached response without logging
-        if models['supervised_model'] is not None:
+        if models['supervised_model'] is not None and models['feature_columns'] is not None:
             status = 'ready'
             message = 'Model is ready for analysis'
         else:
@@ -117,7 +182,7 @@ def get_model_status():
     # Update last check time and log this request (but only occasionally)
     last_status_check = current_time
     
-    if models['supervised_model'] is not None:
+    if models['supervised_model'] is not None and models['feature_columns'] is not None:
         status = 'ready'
         message = 'Model is ready for analysis'
     else:
@@ -317,7 +382,8 @@ def batch_analysis():
                     logger.info(f"Processing flagged transaction {idx}: mapped to original index {actual_idx}")
                     
                     # Get the original transaction data with all columns
-                    original_tx = original_complete_df.iloc[actual_idx]
+                    # Use .loc because test indices are label-based, not positional
+                    original_tx = original_complete_df.loc[actual_idx]
                     tx_data = X_test.iloc[idx]
                     
                     # Create transaction object with all original columns
@@ -452,6 +518,205 @@ def real_time_analysis():
         print(f"Error in real-time analysis: {str(e)}")
         return jsonify({'error': f'Real-time analysis failed: {str(e)}'}), 500
 
+@app.route('/api/simulation/start', methods=['POST'])
+def start_simulation():
+    """Start the real-time transaction simulation."""
+    global simulation_running, simulation_thread, simulation_transactions
+    
+    try:
+        if simulation_running:
+            return jsonify({'error': 'Simulation is already running'}), 400
+        
+        # Clear previous transactions
+        simulation_transactions = []
+        if os.path.exists(SIMULATION_FILE):
+            os.remove(SIMULATION_FILE)
+        
+        # Start simulation
+        simulation_running = True
+        simulation_thread = threading.Thread(target=simulation_worker, daemon=True)
+        simulation_thread.start()
+        
+        logger.info("Real-time transaction simulation started")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Simulation started successfully',
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error starting simulation: {str(e)}")
+        return jsonify({'error': f'Failed to start simulation: {str(e)}'}), 500
+
+@app.route('/api/simulation/stop', methods=['POST'])
+def stop_simulation():
+    """Stop the real-time transaction simulation."""
+    global simulation_running, simulation_thread
+    
+    try:
+        if not simulation_running:
+            return jsonify({'error': 'Simulation is not running'}), 400
+        
+        simulation_running = False
+        
+        # Wait for thread to finish (with timeout)
+        if simulation_thread and simulation_thread.is_alive():
+            simulation_thread.join(timeout=2)
+        
+        # Load transactions from file to ensure we have the latest count
+        if os.path.exists(SIMULATION_FILE):
+            try:
+                with open(SIMULATION_FILE, 'r') as f:
+                    file_transactions = json.load(f)
+                    # Update global variable with file data
+                    global simulation_transactions
+                    simulation_transactions = file_transactions
+            except Exception as e:
+                logger.warning(f"Could not load transactions from file: {str(e)}")
+        
+        logger.info(f"Real-time transaction simulation stopped. Total transactions: {len(simulation_transactions)}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Simulation stopped successfully',
+            'timestamp': datetime.now().isoformat(),
+            'total_transactions': len(simulation_transactions)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error stopping simulation: {str(e)}")
+        return jsonify({'error': f'Failed to stop simulation: {str(e)}'}), 500
+
+@app.route('/api/simulation/status', methods=['GET'])
+def get_simulation_status():
+    """Get the current status of the simulation."""
+    global simulation_transactions
+    
+    # If global variable is empty but file exists, try to load from file
+    if not simulation_transactions and os.path.exists(SIMULATION_FILE):
+        try:
+            with open(SIMULATION_FILE, 'r') as f:
+                file_transactions = json.load(f)
+                simulation_transactions = file_transactions
+                logger.info(f"Loaded {len(simulation_transactions)} transactions from file")
+        except Exception as e:
+            logger.warning(f"Could not load transactions from file: {str(e)}")
+    
+    return jsonify({
+        'running': simulation_running,
+        'total_transactions': len(simulation_transactions),
+        'latest_transactions': simulation_transactions[-5:] if simulation_transactions else [],
+        'file_exists': os.path.exists(SIMULATION_FILE),
+        'timestamp': datetime.now().isoformat()
+    })
+
+@app.route('/api/simulation/analyze', methods=['POST'])
+def analyze_simulation_data():
+    """Analyze the simulated transactions using the current model."""
+    global simulation_transactions
+    
+    try:
+        if models['supervised_model'] is None:
+            return jsonify({'error': 'Model not trained. Please run batch analysis first to train a model.'}), 400
+        
+        if not simulation_transactions:
+            return jsonify({'error': 'No simulation data available. Start simulation first.'}), 400
+        
+        # Convert transactions to DataFrame
+        df = pd.DataFrame(simulation_transactions)
+        
+        # Prepare features for the model (same features used in training)
+        feature_cols = models.get('feature_columns', [])
+        if not feature_cols:
+            return jsonify({'error': 'No feature columns available from trained model.'}), 400
+        
+        # Ensure all required columns exist
+        for col in feature_cols:
+            if col not in df.columns:
+                df[col] = 0  # Default value for missing features
+        
+        # Select only the features used in training
+        X = df[feature_cols]
+        
+        # Get predictions
+        predictions = models['supervised_model'].predict(X)
+        probabilities = models['supervised_model'].predict_proba(X)[:, 1]
+        
+        # Prepare results
+        flagged_transactions = []
+        for i, (idx, row) in enumerate(df.iterrows()):
+            if predictions[i] == 1:  # Flagged as fraud
+                transaction = row.to_dict()
+                transaction['fraud_probability'] = float(probabilities[i])
+                transaction['predicted_class'] = 'Fraudulent'
+                transaction['confidence'] = float(probabilities[i])
+                flagged_transactions.append(transaction)
+        
+        # Calculate basic statistics
+        total_transactions = len(simulation_transactions)
+        flagged_count = int(sum(predictions))
+        fraud_rate = (flagged_count / total_transactions * 100) if total_transactions > 0 else 0
+        
+        statistics = {
+            'totalTransactions': total_transactions,
+            'flaggedTransactions': flagged_count,
+            'fraudRate': fraud_rate,
+            'averageFraudProbability': float(np.mean(probabilities)),
+            'maxFraudProbability': float(np.max(probabilities)),
+            'minFraudProbability': float(np.min(probabilities))
+        }
+        
+        logger.info(f"Analyzed {total_transactions} simulated transactions, flagged {flagged_count} as potential fraud")
+        
+        return jsonify({
+            'success': True,
+            'statistics': statistics,
+            'flaggedTransactions': flagged_transactions,
+            'totalFlagged': flagged_count,
+            'analysisTimestamp': datetime.now().isoformat(),
+            'dataSource': 'real-time-simulation'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error analyzing simulation data: {str(e)}")
+        return jsonify({'error': f'Analysis failed: {str(e)}'}), 500
+
+@app.route('/api/export-fraudulent-transactions', methods=['POST'])
+def export_fraudulent_transactions():
+    """Export fraudulent transactions to CSV file."""
+    try:
+        # Get the flagged transactions from the request
+        data = request.json
+        if not data or 'flaggedTransactions' not in data:
+            return jsonify({'error': 'No flagged transactions data provided'}), 400
+        
+        flagged_transactions = data['flaggedTransactions']
+        if not flagged_transactions:
+            return jsonify({'error': 'No fraudulent transactions to export'}), 400
+        
+        # Convert to DataFrame
+        df = pd.DataFrame(flagged_transactions)
+        
+        # Create a temporary file
+        fd, tmp_path = tempfile.mkstemp(prefix='fraudulent_transactions_', suffix='.csv')
+        os.close(fd)
+        
+        # Save to CSV
+        df.to_csv(tmp_path, index=False)
+        
+        # Return the file
+        return send_file(
+            tmp_path,
+            as_attachment=True,
+            download_name='fraudulent_transactions_detected.csv',
+            mimetype='text/csv'
+        )
+        
+    except Exception as e:
+        logger.error(f"Error exporting fraudulent transactions: {str(e)}")
+        return jsonify({'error': f'Export failed: {str(e)}'}), 500
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint."""
@@ -473,6 +738,19 @@ def debug_rate_limit():
         'time_since_last': time_since_last,
         'cooldown_remaining': max(0, STATUS_CHECK_COOLDOWN - time_since_last),
         'rate_limited': time_since_last < STATUS_CHECK_COOLDOWN
+    })
+
+@app.route('/api/debug/simulation', methods=['GET'])
+def debug_simulation():
+    """Debug endpoint to check simulation state."""
+    global simulation_transactions
+    return jsonify({
+        'simulation_running': simulation_running,
+        'simulation_transactions_count': len(simulation_transactions),
+        'file_exists': os.path.exists(SIMULATION_FILE),
+        'file_size': os.path.getsize(SIMULATION_FILE) if os.path.exists(SIMULATION_FILE) else 0,
+        'latest_transactions': simulation_transactions[-3:] if simulation_transactions else [],
+        'timestamp': datetime.now().isoformat()
     })
 
 @app.errorhandler(413)

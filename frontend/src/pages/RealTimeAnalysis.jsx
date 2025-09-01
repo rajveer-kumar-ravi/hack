@@ -1,9 +1,20 @@
-import React, { useState } from 'react';
-import { Zap, AlertTriangle, Loader, Shield } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Zap, AlertTriangle, Loader, Shield, Play, Square, Activity, BarChart3 } from 'lucide-react';
 import { useFraudDetection } from '../context/FraudDetectionContext';
 
 const RealTimeAnalysis = () => {
   const { analyzeRealTimeTransaction, loading, error, realTimeResults, modelStatus } = useFraudDetection();
+  
+  // Simulation state
+  const [simulationStatus, setSimulationStatus] = useState({
+    running: false,
+    totalTransactions: 0,
+    latestTransactions: [],
+    error: null
+  });
+  const [simulationResults, setSimulationResults] = useState(null);
+  const [simulationLoading, setSimulationLoading] = useState(false);
+  
   const [formData, setFormData] = useState({
     Amount: '',
     V1: '',
@@ -43,6 +54,104 @@ const RealTimeAnalysis = () => {
       [name]: value
     }));
   };
+
+  // Simulation functions
+  const fetchSimulationStatus = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/simulation/status');
+      const data = await response.json();
+      console.log('Simulation status received:', data); // Debug log
+      setSimulationStatus(data);
+    } catch (error) {
+      console.error('Error fetching simulation status:', error);
+      setSimulationStatus(prev => ({ ...prev, error: error.message }));
+    }
+  };
+
+  const startSimulation = async () => {
+    setSimulationLoading(true);
+    try {
+      const response = await fetch('http://localhost:5000/api/simulation/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to start simulation');
+      }
+      
+      await fetchSimulationStatus();
+      setSimulationResults(null); // Clear previous results
+    } catch (error) {
+      console.error('Error starting simulation:', error);
+      setSimulationStatus(prev => ({ ...prev, error: error.message }));
+    } finally {
+      setSimulationLoading(false);
+    }
+  };
+
+  const stopSimulation = async () => {
+    setSimulationLoading(true);
+    try {
+      const response = await fetch('http://localhost:5000/api/simulation/stop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to stop simulation');
+      }
+      
+      await fetchSimulationStatus();
+    } catch (error) {
+      console.error('Error stopping simulation:', error);
+      setSimulationStatus(prev => ({ ...prev, error: error.message }));
+    } finally {
+      setSimulationLoading(false);
+    }
+  };
+
+  const analyzeSimulationData = async () => {
+    setSimulationLoading(true);
+    try {
+      const response = await fetch('http://localhost:5000/api/simulation/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to analyze simulation data');
+      }
+      
+      const data = await response.json();
+      setSimulationResults(data);
+    } catch (error) {
+      console.error('Error analyzing simulation data:', error);
+      alert(`Analysis failed: ${error.message}`);
+    } finally {
+      setSimulationLoading(false);
+    }
+  };
+
+  // Poll simulation status when running
+  useEffect(() => {
+    let interval;
+    if (simulationStatus.running) {
+      interval = setInterval(fetchSimulationStatus, 1000); // Poll every 1 second when running
+    } else {
+      // Also poll occasionally when stopped to get updated counts
+      interval = setInterval(fetchSimulationStatus, 5000); // Poll every 5 seconds when stopped
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [simulationStatus.running]);
+
+  // Initial status fetch
+  useEffect(() => {
+    fetchSimulationStatus();
+  }, []);
 
   // Check if all required fields are filled
   const isFormValid = () => {
@@ -121,9 +230,168 @@ const RealTimeAnalysis = () => {
           Real-Time Analysis
         </h1>
         <p className="text-base sm:text-lg text-gray-600 px-4">
-          Analyze individual credit card transactions for fraud detection in real-time
+          Analyze individual credit card transactions or run real-time simulation
         </p>
       </div>
+
+      {/* Real-Time Simulation Section */}
+      {/* <div className="card">
+        <div className="flex items-center space-x-3 mb-6">
+          <Activity className="h-6 w-6 text-blue-600" />
+          <h2 className="text-xl font-semibold text-gray-900">Real-Time Transaction Simulation</h2>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div>
+                <p className="text-sm font-medium text-gray-700">Simulation Status</p>
+                <p className={`text-lg font-semibold ${simulationStatus.running ? 'text-green-600' : 'text-gray-500'}`}>
+                  {simulationStatus.running ? 'Running' : 'Stopped'}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-medium text-gray-700">Total Transactions</p>
+                <p className="text-lg font-semibold text-blue-600">{simulationStatus.totalTransactions || 0}</p>
+              </div>
+            </div>
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={startSimulation}
+                disabled={simulationStatus.running || simulationLoading}
+                className={`flex-1 btn-primary flex items-center justify-center space-x-2 ${
+                  simulationStatus.running || simulationLoading ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                <Play className="h-4 w-4" />
+                <span>{simulationLoading && !simulationStatus.running ? 'Starting...' : 'Start Simulation'}</span>
+              </button>
+              
+              <button
+                onClick={stopSimulation}
+                disabled={!simulationStatus.running || simulationLoading}
+                className={`flex-1 btn-secondary flex items-center justify-center space-x-2 ${
+                  !simulationStatus.running || simulationLoading ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                <Square className="h-4 w-4" />
+                <span>{simulationLoading && simulationStatus.running ? 'Stopping...' : 'Stop Simulation'}</span>
+              </button>
+            </div>
+
+                         <button
+               onClick={analyzeSimulationData}
+               disabled={simulationStatus.totalTransactions === 0 || simulationLoading || modelStatus?.status !== 'ready'}
+               className={`w-full btn-primary flex items-center justify-center space-x-2 ${
+                 simulationStatus.totalTransactions === 0 || simulationLoading || modelStatus?.status !== 'ready' 
+                   ? 'opacity-50 cursor-not-allowed' : ''
+               }`}
+             >
+               <BarChart3 className="h-4 w-4" />
+               <span>{simulationLoading ? 'Analyzing...' : 'Start Analysis'}</span>
+             </button>
+             
+             <button
+               onClick={fetchSimulationStatus}
+               className="w-full btn-secondary flex items-center justify-center space-x-2"
+             >
+               <Activity className="h-4 w-4" />
+               <span>Refresh Status</span>
+             </button>
+            
+            {(!modelStatus || modelStatus.status !== 'ready') && (
+              <p className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg">
+                ⚠️ Model not ready. Please run batch analysis first to train the model.
+              </p>
+            )}
+          </div>
+          
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 mb-3">Latest Transactions</h3>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {simulationStatus.latestTransactions && simulationStatus.latestTransactions.length > 0 ? (
+                simulationStatus.latestTransactions.slice().reverse().map((tx, index) => (
+                  <div key={index} className="p-3 bg-gray-50 rounded-lg text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">${tx.Amount?.toFixed(2)}</span>
+                      <span className="text-gray-500 text-xs">
+                        {new Date(tx.timestamp).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-600 mt-1">
+                      ID: {tx.transaction_id?.substring(0, 8)}...
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-sm text-center py-8">
+                  No transactions generated yet. Start simulation to see live data.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {simulationResults && (
+          <div className="mt-6 p-6 bg-blue-50 rounded-lg">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Simulation Analysis Results</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-blue-600">{simulationResults.statistics?.totalTransactions || 0}</p>
+                <p className="text-sm text-gray-600">Total Transactions</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-red-600">{simulationResults.statistics?.flaggedTransactions || 0}</p>
+                <p className="text-sm text-gray-600">Flagged as Fraud</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-yellow-600">{simulationResults.statistics?.fraudRate?.toFixed(1) || '0.0'}%</p>
+                <p className="text-sm text-gray-600">Fraud Rate</p>
+              </div>
+            </div>
+
+            {simulationResults.flaggedTransactions && simulationResults.flaggedTransactions.length > 0 && (
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">Flagged Transactions (Top 5)</h4>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {simulationResults.flaggedTransactions.slice(0, 5).map((tx, index) => (
+                    <div key={index} className="p-2 bg-white rounded border border-red-200">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium">${tx.Amount?.toFixed(2) || '0.00'}</span>
+                        <span className="text-red-600 font-medium">
+                          {((tx.fraud_probability || 0) * 100).toFixed(1)}% fraud risk
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        ID: {tx.transaction_id?.substring(0, 12) || 'N/A'}...
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+                 {simulationStatus.error && (
+           <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+             <p className="text-red-600 text-sm">{simulationStatus.error}</p>
+           </div>
+         )}
+         
+         <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+           <h4 className="text-sm font-medium text-gray-700 mb-2">Debug Info</h4>
+           <div className="text-xs text-gray-600 space-y-1">
+             <p>Running: {simulationStatus.running ? 'Yes' : 'No'}</p>
+             <p>Total Transactions: {simulationStatus.totalTransactions || 0}</p>
+             <p>Latest Transactions Count: {simulationStatus.latestTransactions ? simulationStatus.latestTransactions.length : 0}</p>
+             <p>File Exists: {simulationStatus.file_exists ? 'Yes' : 'No'}</p>
+             <p>Timestamp: {simulationStatus.timestamp || 'N/A'}</p>
+           </div>
+         </div>
+      </div> */}
 
       {/* Model Status Warning */}
       {modelStatus === 'idle' && (
@@ -200,7 +468,7 @@ const RealTimeAnalysis = () => {
                            ? 'border-green-500 focus:border-green-500' 
                            : 'border-red-500 focus:border-red-500'
                        }`}
-                       placeholder="Enter value"
+                       placeholder="-"
                        required
                      />
                   </div>
